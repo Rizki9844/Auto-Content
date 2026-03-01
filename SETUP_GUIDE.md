@@ -255,6 +255,177 @@ Tambahkan **5 secrets** berikut (klik "New repository secret" untuk setiap satu)
 
 ---
 
+## TAHAP 5b: Setup Notifikasi Telegram — OPSIONAL (10 menit)
+
+> ⚡ **Ini OPSIONAL** — pipeline tetap jalan tanpa Telegram. Tapi kalau diaktifkan,
+> kamu akan dapat notifikasi otomatis di HP setiap kali video berhasil diupload
+> atau kalau ada error. Sangat berguna untuk monitoring tanpa buka GitHub.
+>
+> 🌐 **Telegram memang full Bahasa Inggris**, tapi jangan khawatir —
+> di bawah ini setiap teks Inggris sudah diterjemahkan supaya kamu tidak bingung.
+
+### Step 5b.1 — Install Telegram (kalau belum punya)
+1. Download Telegram di HP: [Android](https://play.google.com/store/apps/details?id=org.telegram.messenger) / [iOS](https://apps.apple.com/app/telegram-messenger/id686449807)
+2. Buat akun dengan nomor HP kamu
+3. Bisa juga buka di PC: https://web.telegram.org
+
+### Step 5b.2 — Buat Bot Baru lewat @BotFather
+
+> **Apa itu @BotFather?**
+> BotFather adalah bot resmi Telegram untuk membuat bot baru. Kamu "ngobrol" dengannya
+> untuk bikin bot. Gratis, tidak perlu coding apapun.
+
+**Langkah-langkah:**
+
+1. Buka Telegram (di HP atau PC)
+2. Di kolom pencarian (search bar) di atas, ketik: **`BotFather`**
+3. Akan muncul hasil pencarian — pilih yang ada **centang biru ✓** (verified), namanya **@BotFather**
+   > ⚠️ Pastikan ada centang biru! Ada akun palsu yang mirip namanya
+4. Klik/tap untuk buka chat dengan BotFather
+5. Klik tombol **START** di bawah (atau ketik `/start` lalu Enter)
+6. BotFather akan balas dengan daftar perintah. **Ketik pesan ini lalu kirim:**
+   ```
+   /newbot
+   ```
+7. BotFather bertanya: **"Alright, a new bot. How are we going to call it? Please choose a name for your bot."**
+   > (Artinya: "Oke, bot baru. Mau dinamai apa? Pilih nama untuk bot kamu.")
+
+   **Ketik nama bot kamu, contoh:**
+   ```
+   Pipeline Notifier
+   ```
+   > Nama ini bebas, boleh pakai spasi, boleh bahasa apa saja. Ini cuma nama tampilan.
+
+8. BotFather bertanya: **"Good. Now let's choose a username for your bot. It must end in `bot`. For example: TetrisBot or tetris_bot."**
+   > (Artinya: "Bagus. Sekarang pilih username untuk bot. Harus diakhiri `bot`. Contoh: TetrisBot atau tetris_bot.")
+
+   **Ketik username unik, contoh:**
+   ```
+   devinseconds_pipeline_bot
+   ```
+   > ⚠️ Rules username bot:
+   > - HARUS diakhiri kata `bot` (contoh: `xxx_bot` atau `xxxBot`)
+   > - Tidak boleh ada spasi (pakai underscore `_`)
+   > - Harus unik (belum dipakai orang lain)
+   > - Kalau ditolak karena sudah dipakai, coba nama lain, contoh: `coding_shorts_notif_bot`
+
+9. Kalau berhasil, BotFather akan balas pesan panjang yang isinya kira-kira:
+   ```
+   Done! Congratulations on your new bot. You will find it at t.me/devinseconds_pipeline_bot.
+   You can now add a description...
+
+   Use this token to access the HTTP API:
+   7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+   Keep your token secure and store it safely...
+   ```
+   > (Artinya: "Selesai! Selamat dengan bot baru kamu. Bot kamu ada di t.me/xxx.
+   > Gunakan token ini untuk akses API: 7123456789:AAHxxx...
+   > Jaga token ini tetap aman.")
+
+10. **COPY TOKEN YANG PANJANG ITU** — yang formatnya seperti ini:
+    ```
+    7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    ```
+    > 📝 Ini adalah **Bot Token** kamu. Simpan di Notepad dulu! Jangan share ke orang lain.
+
+### Step 5b.3 — Dapatkan Chat ID kamu
+
+> **Apa itu Chat ID?**
+> Ini adalah nomor unik akun Telegram kamu. Bot perlu tahu Chat ID supaya
+> bisa kirim pesan ke KAMU (bukan ke orang lain).
+
+**Langkah-langkah:**
+
+1. **Pertama, kirim pesan ke bot kamu:**
+   - Di Telegram, buka kolom pencarian (search)
+   - Ketik username bot yang baru kamu buat tadi (contoh: `devinseconds_pipeline_bot`)
+   - Buka chat-nya → klik **START** (atau ketik `/start`)
+   - Ketik pesan apa saja, contoh:
+     ```
+     halo
+     ```
+   > ⚠️ Langkah ini WAJIB! Kalau kamu belum kirim pesan ke bot, step berikutnya tidak akan berhasil.
+
+2. **Buka browser, masukkan URL ini** (ganti `TOKEN_KAMU` dengan token dari Step 5b.2):
+   ```
+   https://api.telegram.org/botTOKEN_KAMU/getUpdates
+   ```
+   **Contoh lengkap** (dengan token contoh):
+   ```
+   https://api.telegram.org/bot7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/getUpdates
+   ```
+   > ⚠️ Perhatikan: setelah `/bot` langsung token, **TIDAK ADA spasi**.
+
+3. Browser akan menampilkan teks JSON (teks kode yang agak berantakan). Contohnya:
+   ```json
+   {"ok":true,"result":[{"update_id":123456789,
+   "message":{"message_id":1,"from":{"id":987654321,"is_bot":false,
+   "first_name":"Rizki"},"chat":{"id":987654321,"first_name":"Rizki",
+   "type":"private"},"date":1234567890,"text":"halo"}}]}
+   ```
+
+4. **Cari angka setelah `"chat":{"id":`** — dalam contoh di atas: **`987654321`**
+   > Ini adalah **Chat ID** kamu.
+   >
+   > 💡 Cara gampang: tekan **Ctrl+F** di browser, ketik `"chat":{"id":` → angka setelahnya adalah Chat ID kamu.
+
+5. **COPY Chat ID tersebut** → simpan di Notepad
+
+> ❌ **Kalau browser menampilkan `{"ok":true,"result":[]}`** (result kosong):
+> → Kamu belum kirim pesan ke bot! Balik ke langkah 1, kirim pesan dulu, lalu refresh halaman browser.
+
+### Step 5b.4 — Masukkan ke GitHub Secrets
+
+1. Buka repository kamu di GitHub:
+   `https://github.com/Rizki9844/Auto-Content/settings/secrets/actions`
+2. Klik **New repository secret**
+3. Tambahkan **2 secrets** berikut:
+
+| Name (ketik persis ini) | Value (paste dari Notepad) | Penjelasan |
+|-------------------------|---------------------------|------------|
+| `TELEGRAM_BOT_TOKEN` | `7123456789:AAHxxx...` (token dari Step 5b.2) | Token API bot kamu |
+| `TELEGRAM_CHAT_ID` | `987654321` (angka dari Step 5b.3) | ID chat Telegram kamu |
+
+> Cara menambahkan (sama seperti secrets lainnya):
+> - Klik **New repository secret**
+> - Di kolom **Name**: ketik `TELEGRAM_BOT_TOKEN` (huruf besar semua, pakai underscore)
+> - Di kolom **Secret**: paste token bot kamu
+> - Klik **Add secret**
+> - Ulangi untuk `TELEGRAM_CHAT_ID`
+
+### Step 5b.5 — Test Kirim Notifikasi (Opsional)
+
+Kalau mau test apakah bot sudah benar sebelum jalankan pipeline:
+
+1. Buka browser, masukkan URL ini (ganti `TOKEN` dan `CHATID`):
+   ```
+   https://api.telegram.org/botTOKEN/sendMessage?chat_id=CHATID&text=Hello%20dari%20pipeline!
+   ```
+   **Contoh:**
+   ```
+   https://api.telegram.org/bot7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/sendMessage?chat_id=987654321&text=Hello%20dari%20pipeline!
+   ```
+
+2. Kalau berhasil: kamu akan dapat pesan **"Hello dari pipeline!"** di Telegram dari bot kamu 🎉
+3. Kalau error:
+   - `"chat not found"` → Chat ID salah, atau kamu belum klik START di bot
+   - `"Unauthorized"` → Token salah, cek lagi copy-paste-nya
+
+> ✅ Setelah ini selesai, setiap kali pipeline jalan (berhasil maupun gagal),
+> kamu akan dapat notifikasi otomatis di Telegram! Contoh pesan yang akan diterima:
+>
+> ```
+> ✅ Pipeline Berhasil!
+> 📹 CSS Grid One-Line Centering
+> 🏷 Tipe: tip
+> 💻 Bahasa: css
+> ⏱ Durasi: 28.5 detik
+> 🔗 https://youtube.com/shorts/xxxxx
+> ```
+
+---
+
 ## TAHAP 6: Test Pipeline! (3 menit)
 
 ### Step 6.1 — Trigger Manual Pertama
