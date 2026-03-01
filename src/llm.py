@@ -16,7 +16,7 @@ from src.db import get_past_topics
 # JSON schema for structured Gemini output
 _RESPONSE_SCHEMA = types.Schema(
     type=types.Type.OBJECT,
-    required=["title", "script", "code", "language", "hashtags"],
+    required=["title", "script", "code", "language", "hashtags", "content_type"],
     properties={
         "title": types.Schema(type=types.Type.STRING),
         "script": types.Schema(type=types.Type.STRING),
@@ -26,6 +26,10 @@ _RESPONSE_SCHEMA = types.Schema(
             type=types.Type.ARRAY,
             items=types.Schema(type=types.Type.STRING),
         ),
+        "content_type": types.Schema(type=types.Type.STRING),
+        "expected_output": types.Schema(type=types.Type.STRING),
+        "quiz_answer": types.Schema(type=types.Type.STRING),
+        "code_before": types.Schema(type=types.Type.STRING),
     },
 )
 
@@ -36,13 +40,29 @@ logger = logging.getLogger(__name__)
 # ══════════════════════════════════════════════════════════════
 SYSTEM_PROMPT = """You are an expert coding educator who creates viral short-form video content for YouTube Shorts. Your goal is to generate a unique, practical, educational coding tip that makes developers think "I didn't know that!"
 
+CONTENT TYPES — You MUST pick ONE of these 4 types for each generation:
+
+1. "tip" — A quick coding trick or one-liner. Classic format.
+2. "output_demo" — Code that produces SURPRISING or INTERESTING output when run.
+   You MUST provide expected_output showing exactly what prints when the code executes.
+   Great for: list tricks, math surprises, string manipulation, one-liner magic.
+3. "quiz" — A "What does this code print?" challenge.
+   Show tricky code, the narration asks viewers to guess, then reveal the answer.
+   You MUST provide quiz_answer with the correct explanation.
+4. "before_after" — Show a BAD way (code_before) then a BETTER way (code).
+   The narration explains why the second approach is superior.
+   You MUST provide code_before with the ugly/slow/old approach.
+
 STRICT RULES:
 1. The code snippet MUST be concise (3–15 lines max), syntactically correct, and demonstrate ONE clear concept.
 2. The narration script MUST be exactly 40–60 words. Start with a hook question or surprising statement. Be conversational, energetic, educational.
 3. The title MUST be catchy, max 80 characters, and end with " #Shorts".
 4. Generate exactly 5–8 relevant hashtags (with # prefix).
 5. The code MUST use proper indentation (spaces, not tabs).
-6. VARY the programming language and category across generations.
+6. VARY the programming language, category, and CONTENT TYPE across generations.
+7. For "output_demo": the code MUST be safe to execute (no file I/O, no network, no imports beyond stdlib). The expected_output MUST be the exact stdout.
+8. For "quiz": make the code tricky but fair — something that tests real knowledge.
+9. For "before_after": code_before should be noticeably worse (verbose, slow, or outdated).
 
 CATEGORIES TO ROTATE BETWEEN:
 - Python tricks & one-liners
@@ -60,11 +80,15 @@ CATEGORIES TO ROTATE BETWEEN:
 
 Return valid JSON with this exact schema:
 {
+  "content_type": "tip|output_demo|quiz|before_after",
   "title": "catchy title ending with #Shorts",
   "script": "40-60 word narration script",
   "code": "the code snippet with proper formatting",
   "language": "python|javascript|typescript|css|html|sql|bash|go|rust|java",
-  "hashtags": ["#CodingTips", "#Programming", ...]
+  "hashtags": ["#CodingTips", "#Programming", ...],
+  "expected_output": "(REQUIRED for output_demo) exact stdout when code runs",
+  "quiz_answer": "(REQUIRED for quiz) correct answer + brief explanation",
+  "code_before": "(REQUIRED for before_after) the bad/old approach code"
 }"""
 
 MAX_RETRIES = 3
@@ -268,3 +292,17 @@ def _validate_content(data: dict) -> None:
 
     # Normalize language name
     data["language"] = data["language"].lower().strip()
+
+    # Normalize and validate content_type
+    ct = data.get("content_type", "tip").lower().strip()
+    if ct not in ("tip", "output_demo", "quiz", "before_after"):
+        ct = "tip"
+    data["content_type"] = ct
+
+    # Ensure type-specific fields have defaults
+    if ct == "output_demo" and not data.get("expected_output"):
+        data["expected_output"] = ""
+    if ct == "quiz" and not data.get("quiz_answer"):
+        data["quiz_answer"] = ""
+    if ct == "before_after" and not data.get("code_before"):
+        data["code_before"] = ""

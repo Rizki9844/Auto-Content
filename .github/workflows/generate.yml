@@ -28,6 +28,8 @@ jobs:
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       CHANNEL_NAME: ${{ vars.CHANNEL_NAME || '@DevInSeconds' }}
       TTS_VOICE: ${{ vars.TTS_VOICE || 'en-US-GuyNeural' }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
       # ── Checkout repository ─────────────────────────────────
@@ -49,6 +51,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
+
+      # ── Set up Node.js (for JS code execution in output_demo) ──
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       # ── Install Python packages ─────────────────────────────
       - name: Install Python dependencies

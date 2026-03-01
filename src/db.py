@@ -93,6 +93,8 @@ def save_record(data: dict) -> str | None:
             "code": data.get("code", ""),
             "language": data.get("language", ""),
             "hashtags": data.get("hashtags", []),
+            "content_type": data.get("content_type", "tip"),
+            "code_output": data.get("code_output"),
             "youtube_id": data.get("youtube_id"),
             "tiktok_id": data.get("tiktok_id"),
             "duration_seconds": data.get("duration_seconds", 0),

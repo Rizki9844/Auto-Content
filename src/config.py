@@ -84,6 +84,11 @@ LINE_NUM_FONT_SIZE = 22
 SUBTITLE_FONT_SIZE = 44
 WATERMARK_FONT_SIZE = 22
 CHROME_FONT_SIZE = 16
+TITLE_FONT_SIZE = 52
+TITLE_SUB_FONT_SIZE = 30
+OUTPUT_FONT_SIZE = 24
+OUTRO_FONT_SIZE = 40
+OUTRO_SUB_FONT_SIZE = 28
 
 
 # ══════════════════════════════════════════════════════════════
@@ -93,6 +98,37 @@ TYPING_CPS = 25            # characters per second
 CURSOR_BLINK_HZ = 3        # blinks per second
 TYPING_DELAY_START = 0.5   # seconds of pause before typing starts
 TYPING_DELAY_END = 1.0     # seconds of pause after typing finishes
+
+# Intro / Outro timing
+INTRO_DURATION = 2.0       # seconds for title card intro
+OUTRO_DURATION = 2.5       # seconds for subscribe outro
+OUTPUT_REVEAL_DURATION = 1.5  # seconds for output panel reveal
+
+
+# ══════════════════════════════════════════════════════════════
+#  OUTPUT PANEL  (terminal-style panel below code)
+# ══════════════════════════════════════════════════════════════
+OUTPUT_BG = "#161b22"
+OUTPUT_HEADER_BG = "#1c2128"
+OUTPUT_TEXT_COLOR = "#7ee787"     # green terminal text
+OUTPUT_ERROR_COLOR = "#ff7b72"   # red for errors
+OUTPUT_PROMPT_COLOR = "#8b949e"  # grey for "$ " prompt
+
+
+# ══════════════════════════════════════════════════════════════
+#  INTRO / OUTRO COLORS
+# ══════════════════════════════════════════════════════════════
+ACCENT_GRADIENT_LEFT = "#58a6ff"     # blue accent
+ACCENT_GRADIENT_RIGHT = "#d2a8ff"    # purple accent
+INTRO_TITLE_COLOR = "#ffffff"
+INTRO_SUBTITLE_COLOR = "#8b949e"
+OUTRO_CTA_COLOR = "#ffd700"          # gold "Subscribe" text
+
+
+# ══════════════════════════════════════════════════════════════
+#  CONTENT TYPES
+# ══════════════════════════════════════════════════════════════
+CONTENT_TYPES = ["tip", "output_demo", "quiz", "before_after"]
 
 
 # ══════════════════════════════════════════════════════════════
@@ -112,6 +148,13 @@ MONGODB_URI = os.environ.get("MONGODB_URI", "")
 YOUTUBE_CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID", "")
 YOUTUBE_CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET", "")
 YOUTUBE_REFRESH_TOKEN = os.environ.get("YOUTUBE_REFRESH_TOKEN", "")
+
+
+# ══════════════════════════════════════════════════════════════
+#  TELEGRAM NOTIFICATIONS
+# ══════════════════════════════════════════════════════════════
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 
 # ══════════════════════════════════════════════════════════════

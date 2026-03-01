@@ -19,6 +19,10 @@ def create_video(
     audio_path: str,
     output_path: str | None = None,
     channel_name: str | None = None,
+    content_type: str = "tip",
+    code_output: str | None = None,
+    code_before: str | None = None,
+    title: str = "",
 ) -> str:
     """
     Render a complete video from code + audio.
@@ -30,6 +34,10 @@ def create_video(
         audio_path: Path to the TTS-generated MP3 file.
         output_path: Where to save the final MP4 (default: output/video.mp4).
         channel_name: Override branding watermark text.
+        content_type: One of "tip", "output_demo", "quiz", "before_after".
+        code_output: Code execution output or quiz answer to display.
+        code_before: "Before" code for before_after content type.
+        title: Video title for intro card.
 
     Returns:
         Path to the rendered video file.
@@ -58,6 +66,10 @@ def create_video(
         word_timestamps=word_timestamps,
         duration=duration,
         channel_name=channel_name,
+        content_type=content_type,
+        code_output=code_output,
+        code_before=code_before,
+        title=title,
     )
 
     # ── Create video clip from frame function ─────────────────

@@ -53,6 +53,8 @@ def main():
     from src.video import create_video
     from src.uploader_youtube import upload_to_youtube
     from src.db import save_record
+    from src.code_runner import get_output_for_content
+    from src.notifier import send_notification
 
     logger.info("=" * 55)
     logger.info("  Automated Coding Shorts Pipeline — Starting")
@@ -88,12 +90,22 @@ def main():
             "code": content["code"],
             "language": content["language"],
             "hashtags": content.get("hashtags", []),
+            "content_type": content.get("content_type", "tip"),
         })
 
         logger.info(f"  ✓ Title:    {content['title']}")
+        logger.info(f"  ✓ Type:     {content.get('content_type', 'tip')}")
         logger.info(f"  ✓ Language: {content['language']}")
         logger.info(f"  ✓ Code:     {len(content['code'])} chars, {content['code'].count(chr(10))+1} lines")
         logger.info(f"  ✓ Script:   {len(content['script'].split())} words")
+
+        # ╔════════════════════════════════════════════════════╗
+        # ║  STEP 1b — Run Code (for output_demo/quiz)        ║
+        # ╚════════════════════════════════════════════════════╝
+        code_output = get_output_for_content(content)
+        if code_output:
+            logger.info(f"  ✓ Output:   {len(code_output)} chars")
+            record["code_output"] = code_output[:500]
 
         # ╔════════════════════════════════════════════════════╗
         # ║  STEP 2 — Generate Voiceover (edge-tts)           ║
@@ -117,6 +129,10 @@ def main():
             word_timestamps=word_timestamps,
             audio_path=audio_path,
             channel_name=config.CHANNEL_NAME,
+            content_type=content.get("content_type", "tip"),
+            code_output=code_output,
+            code_before=content.get("code_before"),
+            title=content["title"],
         )
 
         # Get video duration for record
@@ -171,6 +187,16 @@ def main():
         logger.info("  ✅  Pipeline completed successfully!")
         logger.info("=" * 55)
 
+        # ── Telegram notification ─────────────────────────────
+        send_notification(
+            status="success",
+            title=content["title"],
+            youtube_id=youtube_id,
+            language=content["language"],
+            content_type=content.get("content_type", "tip"),
+            duration=record.get("duration_seconds", 0),
+        )
+
     except Exception as e:
         # ── Handle failure ────────────────────────────────────
         logger.error(f"Pipeline FAILED: {e}", exc_info=True)
@@ -183,6 +209,16 @@ def main():
             logger.info("Failure record saved to MongoDB")
         except Exception as db_err:
             logger.error(f"Could not save failure record: {db_err}")
+
+        # ── Telegram failure notification ─────────────────────
+        try:
+            send_notification(
+                status="failed",
+                title=record.get("title", ""),
+                error_message=str(e)[:300],
+            )
+        except Exception:
+            pass
 
         sys.exit(1)
 
