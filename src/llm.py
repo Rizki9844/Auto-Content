@@ -13,6 +13,22 @@ from google.genai import types
 from src import config
 from src.db import get_past_topics
 
+# JSON schema for structured Gemini output
+_RESPONSE_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    required=["title", "script", "code", "language", "hashtags"],
+    properties={
+        "title": types.Schema(type=types.Type.STRING),
+        "script": types.Schema(type=types.Type.STRING),
+        "code": types.Schema(type=types.Type.STRING),
+        "language": types.Schema(type=types.Type.STRING),
+        "hashtags": types.Schema(
+            type=types.Type.ARRAY,
+            items=types.Schema(type=types.Type.STRING),
+        ),
+    },
+)
+
 logger = logging.getLogger(__name__)
 
 # ══════════════════════════════════════════════════════════════
@@ -106,28 +122,47 @@ def _repair_json(raw: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    # Step 4: Try to extract individual fields with regex as last resort
+    # Step 4: Try to close truncated JSON (missing closing braces/brackets)
+    try:
+        # Count open/close braces and brackets
+        open_braces = fixed.count('{') - fixed.count('}')
+        open_brackets = fixed.count('[') - fixed.count(']')
+        # Close any unterminated string
+        if fixed.count('"') % 2 != 0:
+            fixed += '"'
+        fixed += ']' * max(0, open_brackets)
+        fixed += '}' * max(0, open_braces)
+        return json.loads(fixed)
+    except json.JSONDecodeError:
+        pass
+
+    # Step 5: Try to extract individual fields with regex as last resort
     try:
         title = re.search(r'"title"\s*:\s*"([^"]*)"', text)
         script = re.search(r'"script"\s*:\s*"([^"]*)"', text)
         lang = re.search(r'"language"\s*:\s*"([^"]*)"', text)
         hashtags = re.search(r'"hashtags"\s*:\s*\[(.*?)\]', text, re.DOTALL)
 
-        # Code field is trickiest — grab everything between "code": " and the next key
+        # Code field — grab everything between "code": " and a closing quote
+        # followed by comma/brace (handles any key order)
         code_match = re.search(
-            r'"code"\s*:\s*"(.*?)"\s*,\s*"(?:language|hashtags|title|script)"',
+            r'"code"\s*:\s*"(.*?)"\s*[,}]',
             text, re.DOTALL
         )
 
-        if title and script and code_match and lang:
+        if title and script and lang:
             tags = []
             if hashtags:
                 tags = re.findall(r'"(#[^"]+)"', hashtags.group(1))
 
+            code_text = ""
+            if code_match:
+                code_text = code_match.group(1).replace('\\n', '\n').replace('\\t', '\t')
+
             return {
                 "title": title.group(1),
                 "script": script.group(1),
-                "code": code_match.group(1).replace('\\n', '\n').replace('\\t', '\t'),
+                "code": code_text or "# Code generation failed",
                 "language": lang.group(1),
                 "hashtags": tags or ["#CodingTips", "#Programming", "#Shorts"],
             }
@@ -176,6 +211,7 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
                 contents=user_prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    response_schema=_RESPONSE_SCHEMA,
                     temperature=0.9,
                     top_p=0.95,
                     max_output_tokens=2048,
@@ -184,6 +220,7 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
 
             # Parse JSON response (with repair for common LLM issues)
             raw_text = response.text.strip()
+            logger.debug(f"Raw Gemini response ({len(raw_text)} chars): {raw_text[:500]}")
             data = _repair_json(raw_text)
 
             # Validate required fields
@@ -195,6 +232,9 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
         except Exception as e:
             last_error = e
             logger.warning(f"Attempt {attempt}/{MAX_RETRIES} failed: {e}")
+            # Log the raw response for debugging on parse failures
+            if 'raw_text' in locals():
+                logger.info(f"Raw response preview: {raw_text[:300]}...")
             if attempt < MAX_RETRIES:
                 logger.info(f"Retrying in {RETRY_DELAY}s...")
                 time.sleep(RETRY_DELAY)
