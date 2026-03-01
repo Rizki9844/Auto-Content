@@ -3,6 +3,7 @@ LLM content generation module using Google Gemini Pro.
 Generates structured JSON with title, narration script, code snippet, and hashtags.
 """
 import json
+import re
 import time
 import logging
 
@@ -54,6 +55,89 @@ MAX_RETRIES = 3
 RETRY_DELAY = 10  # seconds
 
 
+def _repair_json(raw: str) -> dict:
+    """
+    Attempt to parse JSON, with fallback repair for common LLM issues:
+    - Code blocks wrapped in ```json ... ```
+    - Unterminated strings (truncated output)
+    - Unescaped newlines inside string values
+    """
+    # Step 1: Strip markdown code fences if present
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*\n?", "", text)
+        text = re.sub(r"\n?```\s*$", "", text)
+        text = text.strip()
+
+    # Step 2: Try direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Step 3: Fix unescaped newlines inside JSON string values
+    # Replace literal newlines that are inside strings with \\n
+    fixed = ""
+    in_string = False
+    escape_next = False
+    for ch in text:
+        if escape_next:
+            fixed += ch
+            escape_next = False
+            continue
+        if ch == '\\':
+            fixed += ch
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            fixed += ch
+            continue
+        if in_string and ch == '\n':
+            fixed += '\\n'
+            continue
+        if in_string and ch == '\t':
+            fixed += '\\t'
+            continue
+        fixed += ch
+
+    try:
+        return json.loads(fixed)
+    except json.JSONDecodeError:
+        pass
+
+    # Step 4: Try to extract individual fields with regex as last resort
+    try:
+        title = re.search(r'"title"\s*:\s*"([^"]*)"', text)
+        script = re.search(r'"script"\s*:\s*"([^"]*)"', text)
+        lang = re.search(r'"language"\s*:\s*"([^"]*)"', text)
+        hashtags = re.search(r'"hashtags"\s*:\s*\[(.*?)\]', text, re.DOTALL)
+
+        # Code field is trickiest — grab everything between "code": " and the next key
+        code_match = re.search(
+            r'"code"\s*:\s*"(.*?)"\s*,\s*"(?:language|hashtags|title|script)"',
+            text, re.DOTALL
+        )
+
+        if title and script and code_match and lang:
+            tags = []
+            if hashtags:
+                tags = re.findall(r'"(#[^"]+)"', hashtags.group(1))
+
+            return {
+                "title": title.group(1),
+                "script": script.group(1),
+                "code": code_match.group(1).replace('\\n', '\n').replace('\\t', '\t'),
+                "language": lang.group(1),
+                "hashtags": tags or ["#CodingTips", "#Programming", "#Shorts"],
+            }
+    except Exception:
+        pass
+
+    # Nothing worked — raise original error
+    raise json.JSONDecodeError("Could not repair JSON from LLM response", text, 0)
+
+
 def generate_content() -> dict:
     """
     Generate a unique coding tip using Gemini Pro.
@@ -94,13 +178,13 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
                     response_mime_type="application/json",
                     temperature=0.9,
                     top_p=0.95,
-                    max_output_tokens=1024,
+                    max_output_tokens=2048,
                 ),
             )
 
-            # Parse JSON response
+            # Parse JSON response (with repair for common LLM issues)
             raw_text = response.text.strip()
-            data = json.loads(raw_text)
+            data = _repair_json(raw_text)
 
             # Validate required fields
             _validate_content(data)
