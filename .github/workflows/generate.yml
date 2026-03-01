@@ -68,7 +68,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
           echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .last-run
-          git add .last-run
+          git add -f .last-run
           git diff --cached --quiet || {
             git commit -m "chore: pipeline run $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git push
