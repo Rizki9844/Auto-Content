@@ -105,7 +105,7 @@ TTS_VOICE = os.environ.get("TTS_VOICE", "en-US-GuyNeural")
 #  API KEYS & CREDENTIALS  (loaded from env / GitHub Secrets)
 # ══════════════════════════════════════════════════════════════
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-pro-latest")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
 MONGODB_URI = os.environ.get("MONGODB_URI", "")
 

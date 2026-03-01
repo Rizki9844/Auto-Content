@@ -247,10 +247,10 @@ Tambahkan **5 secrets** berikut (klik "New repository secret" untuk setiap satu)
 | Name | Value | Default (kalau tidak diisi) | Perlu diisi? |
 |------|-------|----------------------------|-------------|
 | `CHANNEL_NAME` | `@DevInSeconds` | `@DevInSeconds` | ❌ Sudah default |
-| `GEMINI_MODEL` | `gemini-1.5-pro-latest` | `gemini-1.5-pro-latest` | ❌ Sudah default |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | `gemini-2.0-flash` | ❌ Sudah default |
 | `TTS_VOICE` | `en-US-GuyNeural` | `en-US-GuyNeural` | ❌ Sudah default |
 
-> ✅ **Untuk kamu**: Semua default sudah sesuai (channel = @DevInSeconds, suara pria, Gemini Pro).
+> ✅ **Untuk kamu**: Semua default sudah sesuai (channel = @DevInSeconds, suara pria, Gemini 2.0 Flash).
 > **Kamu bisa SKIP step 5.3 ini sepenuhnya** — langsung lanjut ke Tahap 6.
 
 ---
