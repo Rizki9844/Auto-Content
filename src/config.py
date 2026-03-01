@@ -117,4 +117,4 @@ YOUTUBE_REFRESH_TOKEN = os.environ.get("YOUTUBE_REFRESH_TOKEN", "")
 # ══════════════════════════════════════════════════════════════
 #  BRANDING
 # ══════════════════════════════════════════════════════════════
-CHANNEL_NAME = os.environ.get("CHANNEL_NAME", "@CodeTipsDaily")
+CHANNEL_NAME = os.environ.get("CHANNEL_NAME", "@DevInSeconds")

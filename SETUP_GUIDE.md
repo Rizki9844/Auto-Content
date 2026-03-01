@@ -114,53 +114,79 @@ Supaya GitHub Actions (server clouded) bisa akses database kamu:
 ## TAHAP 4: Setup YouTube Upload (15 menit)
 
 > Ini bagian yang paling panjang, tapi cuma perlu dilakukan SEKALI.
+> 
+> ⚠️ **PENTING tentang beda email**:
+> - Google Cloud Console + YouTube → login pakai **email YouTube channel kamu**
+> - Ini BOLEH beda dari email GitHub/MongoDB kamu, tidak masalah
+> - Yang penting: email Google Cloud = email pemilik YouTube channel
 
 ### Step 4.1 — Buat Project di Google Cloud Console
 1. Buka https://console.cloud.google.com/
-2. Login dengan Google account yang SAMA dengan channel YouTube kamu
+2. **Login dengan email yang SAMA dengan akun YouTube channel kamu**
+   (bukan email GitHub/MongoDB — boleh beda)
 3. Di navbar atas, klik dropdown project → **New Project**
 4. Isi:
    - **Project name**: `Coding Shorts Pipeline`
-   - **Organization**: biarkan default
+   - **Organization**: biarkan default (kalau tidak muncul, abaikan saja)
 5. Klik **Create** → tunggu beberapa detik
 6. Pastikan project baru ini sudah terpilih di dropdown atas
 
 ### Step 4.2 — Enable YouTube Data API
 1. Buka https://console.cloud.google.com/apis/library/youtube.googleapis.com
-2. Pastikan project yang benar terpilih di dropdown atas
-3. Klik **ENABLE**
-4. Tunggu sampai API aktif
+2. Pastikan project **"Coding Shorts Pipeline"** terpilih di dropdown atas
+3. Klik tombol biru **ENABLE**
+4. Tunggu sampai muncul halaman dashboard API (artinya sudah aktif)
 
-### Step 4.3 — Buat OAuth Consent Screen
-1. Buka https://console.cloud.google.com/apis/credentials/consent
-2. Pilih **External** → klik **Create**
-3. Isi form:
-   - **App name**: `Coding Shorts Bot` (nama bebas)
-   - **User support email**: email kamu
-   - **Developer contact email**: email kamu
-   - Lainnya biarkan kosong
-4. Klik **Save and Continue**
-5. Di halaman **Scopes** → langsung klik **Save and Continue** (skip)
-6. Di halaman **Test Users** → klik **Add Users** → masukkan email Google kamu → **Save and Continue**
-7. Review → klik **Back to Dashboard**
+### Step 4.3 — Buat OAuth Consent Screen (UI baru Google Auth Platform)
+
+> Ini adalah halaman "izin" yang muncul saat kamu authorize app.
+> Google sudah update tampilan — sekarang langsung form 4 langkah.
+
+1. Buka https://console.cloud.google.com/auth/overview/create
+2. Pastikan project **"Coding Shorts Pipeline"** terpilih di atas
+
+3. **Langkah 1 — App Information:**
+   - **App name**: ketik `Coding Shorts Bot`
+   - **User support email**: klik dropdown → pilih email kamu
+   - Klik **Next**
+
+4. **Langkah 2 — Audience:**
+   - Pilih **External**
+   - Klik **Next**
+
+5. **Langkah 3 — Contact Information:**
+   - Ketik **email kamu** (boleh sama dengan di atas)
+   - Klik **Next**
+
+6. **Langkah 4 — Finish:**
+   - Klik **Create**
 
 ### Step 4.4 — ⚠️ PUBLISH Consent Screen (SANGAT PENTING!)
-1. Di halaman OAuth consent screen, kamu lihat status **"Testing"**
-2. Klik tombol **PUBLISH APP**
-3. Klik **Confirm**
 
-> ❗ Kalau kamu TIDAK publish, refresh token akan EXPIRE setelah 7 hari.
-> Setelah publish, token berlaku selamanya (sampai kamu revoke manual).
-> Tidak perlu verifikasi Google — consent screen dengan warning "unverified app" itu oke untuk penggunaan personal.
+> Tanpa step ini, token kamu akan EXPIRE setelah 7 hari dan pipeline berhenti.
+
+1. Setelah create, kamu kembali ke halaman **Overview**
+2. Klik **Audience** di sidebar kiri
+3. Cari bagian **"Publishing status"** → statusnya masih **"Testing"**
+4. Klik tombol **PUBLISH APP**
+5. Muncul popup konfirmasi → klik **CONFIRM**
+6. Status berubah jadi **"In production"** ← ini yang benar
+
+> ❓ "Apakah Google akan review app saya?"
+> → TIDAK. App kamu tetap berstatus "unverified" dan itu 100% oke.
+> → Saat authorize nanti, muncul warning "app isn't verified" — itu normal,
+>   tinggal klik Advanced → Go to app. Untuk pemakaian personal, ini aman.
 
 ### Step 4.5 — Buat OAuth Client ID
-1. Buka https://console.cloud.google.com/apis/credentials
-2. Klik **+ CREATE CREDENTIALS** → pilih **OAuth client ID**
-3. Application type: pilih **Desktop app**
-4. Name: `Pipeline Desktop Client`
+1. Klik **Clients** di sidebar kiri
+2. Klik **+ CREATE CLIENT** (atau **+ Create OAuth client ID**)
+3. **Application type**: pilih **Desktop app**
+4. **Name**: ketik `Pipeline Desktop Client` (nama bebas)
 5. Klik **Create**
-6. Muncul popup dengan **Client ID** dan **Client Secret**
-7. **COPY KEDUA-DUANYA** — simpan!
+6. Muncul popup/halaman dengan **Client ID** dan **Client Secret**
+7. **COPY KEDUA-DUANYA** → simpan ke Notepad dulu!
+   - Client ID bentuknya: `xxxxx.apps.googleusercontent.com`
+   - Client Secret bentuknya: `GOCSPX-xxxxx`
 
 ### Step 4.6 — Jalankan OAuth Authorization (di komputer lokal)
 Buka terminal di folder project:
@@ -204,17 +230,28 @@ Tambahkan **5 secrets** berikut (klik "New repository secret" untuk setiap satu)
 | `YOUTUBE_REFRESH_TOKEN` | Refresh token dari script auth | Tahap 4 |
 
 ### Step 5.3 — (Opsional) Tambahkan Variables
-1. Di halaman yang sama, klik tab **Variables** (sebelah tab Secrets)
-2. Klik **New repository variable**
-3. Tambahkan:
 
-| Name | Value | Keterangan |
-|------|-------|------------|
-| `CHANNEL_NAME` | `@NamaChannelKamu` | Watermark di video |
-| `GEMINI_MODEL` | `gemini-1.5-pro-latest` | Model Gemini yang digunakan |
-| `TTS_VOICE` | `en-US-GuyNeural` | Voice TTS (pria). Alternatif: `en-US-AriaNeural` (wanita) |
+> **Apa bedanya Secrets vs Variables?**
+> - **Secrets** (Step 5.2) = data sensitif (password, API key, token) — **WAJIB** diisi
+> - **Variables** (Step 5.3) = pengaturan tampilan/preferensi — **OPSIONAL**, kalau tidak diisi pakai default
 
-> Variables ini opsional — kalau tidak diisi, sistem pakai nilai default.
+**Cara menambahkan:**
+1. Masih di halaman **Settings → Secrets and variables → Actions**
+2. Klik tab **Variables** (letaknya di sebelah tab "Secrets" di bagian atas)
+3. Klik **New repository variable**
+4. Isi **Name** dan **Value**, lalu klik **Add variable**
+5. Ulangi untuk variable lain jika perlu
+
+**Daftar variables yang tersedia:**
+
+| Name | Value | Default (kalau tidak diisi) | Perlu diisi? |
+|------|-------|----------------------------|-------------|
+| `CHANNEL_NAME` | `@DevInSeconds` | `@DevInSeconds` | ❌ Sudah default |
+| `GEMINI_MODEL` | `gemini-1.5-pro-latest` | `gemini-1.5-pro-latest` | ❌ Sudah default |
+| `TTS_VOICE` | `en-US-GuyNeural` | `en-US-GuyNeural` | ❌ Sudah default |
+
+> ✅ **Untuk kamu**: Semua default sudah sesuai (channel = @DevInSeconds, suara pria, Gemini Pro).
+> **Kamu bisa SKIP step 5.3 ini sepenuhnya** — langsung lanjut ke Tahap 6.
 
 ---
 
