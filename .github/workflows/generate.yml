@@ -1,0 +1,67 @@
+name: Generate & Upload Coding Short
+
+on:
+  schedule:
+    - cron: '0 8 * * *'    # Daily at 08:00 UTC
+    - cron: '0 20 * * *'   # Daily at 20:00 UTC
+  workflow_dispatch:         # Allow manual trigger from GitHub UI
+
+concurrency:
+  group: content-pipeline
+  cancel-in-progress: false  # Don't cancel running pipelines
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-1.5-pro-latest' }}
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      CHANNEL_NAME: ${{ vars.CHANNEL_NAME || '@CodeTipsDaily' }}
+      TTS_VOICE: ${{ vars.TTS_VOICE || 'en-US-GuyNeural' }}
+
+    steps:
+      # ── Checkout repository ─────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Set up Python ───────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      # ── Install system dependencies ─────────────────────────
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      # ── Install Python packages ─────────────────────────────
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── Run the pipeline ────────────────────────────────────
+      - name: Run content pipeline
+        run: python -m src.main
+
+      # ── Keep repository active (prevent schedule disable) ───
+      - name: Keep repository active
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .last-run
+          git add .last-run
+          git diff --cached --quiet || {
+            git commit -m "chore: pipeline run $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          }

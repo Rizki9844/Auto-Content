@@ -1,0 +1,24 @@
+# ─── LLM ──────────────────────────────────────────────
+google-genai>=1.0.0
+
+# ─── Text-to-Speech ───────────────────────────────────
+edge-tts>=6.1.0
+
+# ─── Video Rendering ──────────────────────────────────
+moviepy>=2.0.0,<3.0.0
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# ─── Syntax Highlighting ──────────────────────────────
+Pygments>=2.17.0
+
+# ─── Database ─────────────────────────────────────────
+pymongo[srv]>=4.6.0
+
+# ─── YouTube Upload ───────────────────────────────────
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# ─── Utilities ────────────────────────────────────────
+python-dotenv>=1.0.0

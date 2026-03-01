@@ -1,0 +1,38 @@
+# ─── Output & Temp Files ──────────────────────────────
+output/
+*.mp4
+*.mp3
+*.wav
+
+# ─── Environment ──────────────────────────────────────
+.env
+.env.local
+.env.production
+
+# ─── Python ───────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ─── IDE ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Misc ─────────────────────────────────────────────
+*.log
+.last-run
