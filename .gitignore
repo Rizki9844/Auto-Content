@@ -35,7 +35,6 @@ desktop.ini
 
 # ─── Misc ─────────────────────────────────────────────
 *.log
-.last-run
 
 # ─── Security (JANGAN HAPUS) ──────────────────────────
 # File kredensial yang tidak boleh ter-commit
