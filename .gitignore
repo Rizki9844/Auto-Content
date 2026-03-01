@@ -36,3 +36,13 @@ desktop.ini
 # ─── Misc ─────────────────────────────────────────────
 *.log
 .last-run
+
+# ─── Security (JANGAN HAPUS) ──────────────────────────
+# File kredensial yang tidak boleh ter-commit
+client_secret*.json
+token*.json
+*.pickle
+credentials.json
+oauth*.json
+*.pem
+*.key

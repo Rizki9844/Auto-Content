@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from pymongo.encryption_options import AutoEncryptionOpts
 
 from src import config
 
@@ -33,10 +34,14 @@ def _get_collection():
         config.MONGODB_URI,
         serverSelectionTimeoutMS=10_000,
         connectTimeoutMS=10_000,
+        tls=True,                   # Force TLS encryption in transit
+        retryWrites=True,           # Auto-retry on transient errors
+        retryReads=True,
+        appname="content-pipeline", # Identifies this app in MongoDB logs
     )
     # Verify connectivity
     _client.admin.command("ping")
-    logger.info("Connected to MongoDB Atlas")
+    logger.info("Connected to MongoDB Atlas (TLS encrypted)")
 
     db = _client[DB_NAME]
     _collection = db[COLLECTION_NAME]

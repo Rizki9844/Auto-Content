@@ -11,8 +11,29 @@ Usage:
 """
 import sys
 import logging
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+# ── Credential-safe logging filter ────────────────────────────
+class CredentialFilter(logging.Filter):
+    """Redact any accidental credential leaks in log output."""
+    PATTERNS = [
+        re.compile(r"(mongodb\+srv://[^:]+:)[^@]+(@)", re.I),       # MongoDB URI
+        re.compile(r"(AIza[A-Za-z0-9_-]{35})", re.I),                # Google API key
+        re.compile(r"(ya29\.[A-Za-z0-9_-]+)", re.I),                 # Google access token
+        re.compile(r"(1//[A-Za-z0-9_-]+)", re.I),                    # Google refresh token
+    ]
+
+    def filter(self, record):
+        msg = record.getMessage()
+        for pat in self.PATTERNS:
+            msg = pat.sub(r"\1***REDACTED***\2" if pat.groups else "***REDACTED***", msg)
+        record.msg = msg
+        record.args = ()
+        return True
+
 
 # ── Configure logging ─────────────────────────────────────────
 logging.basicConfig(
@@ -20,6 +41,8 @@ logging.basicConfig(
     format="%(asctime)s │ %(name)-18s │ %(levelname)-7s │ %(message)s",
     datefmt="%H:%M:%S",
 )
+# Apply credential filter to root logger
+logging.getLogger().addFilter(CredentialFilter())
 logger = logging.getLogger("pipeline")
 
 
