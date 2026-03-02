@@ -2,8 +2,16 @@ name: Generate & Upload Coding Short
 
 on:
   schedule:
-    - cron: '0 8 * * *'    # Daily at 08:00 UTC
-    - cron: '0 20 * * *'   # Daily at 20:00 UTC
+    # ── 3x/day — optimized for US audience peak engagement ──
+    # Semua waktu dalam UTC. Target utama: EST (UTC-5) & PST (UTC-8)
+    #
+    #   UTC 13:00  →  8 AM EST  /  5 AM PST   — morning commute
+    #   UTC 18:00  →  1 PM EST  / 10 AM PST   — lunch break
+    #   UTC 00:00  →  7 PM EST  /  4 PM PST   — prime time (evening)
+    #
+    - cron: '0 13 * * *'   # 8 AM EST — morning
+    - cron: '0 18 * * *'   # 1 PM EST — lunch
+    - cron: '0 0  * * *'   # 7 PM EST — prime time
   workflow_dispatch:         # Allow manual trigger from GitHub UI
 
 concurrency:
