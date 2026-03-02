@@ -363,7 +363,7 @@ class FrameRenderer:
         gradient = (top + (bottom - top) * ratios).astype(np.uint8)
         # Broadcast to full width
         arr = np.broadcast_to(gradient[:, np.newaxis, :], (self.height, self.width, 3)).copy()
-        return Image.fromarray(arr, "RGB")
+        return Image.fromarray(arr)
 
     def _create_base_image(self):
         """Build the static split-screen base image with preview + code panels."""

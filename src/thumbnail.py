@@ -85,7 +85,7 @@ def _make_gradient(w: int, h: int, top_rgb: tuple, bottom_rgb: tuple) -> Image.I
     for i, (a, b) in enumerate(zip(top_rgb, bottom_rgb)):
         col = np.linspace(a, b, h, dtype=np.float32)
         arr[:, :, i] = np.broadcast_to(col[:, None], (h, w))
-    return Image.fromarray(arr, "RGB")
+    return Image.fromarray(arr)
 
 
 def _load_font(path: str, size: int) -> ImageFont.FreeTypeFont:
