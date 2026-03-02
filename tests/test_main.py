@@ -3,7 +3,6 @@ Tests for src.main — CredentialFilter, content safety, JSON logging, health ch
 """
 import json
 import logging
-import re
 import pytest
 from src.main import CredentialFilter, _is_content_safe, _JsonFormatter, _health_check
 

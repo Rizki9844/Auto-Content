@@ -1,7 +1,6 @@
 """
 Tests for src.code_runner — AST safety validation, pattern blocking, execution.
 """
-import pytest
 from src.code_runner import (
     _is_python_safe_ast,
     _is_js_safe,

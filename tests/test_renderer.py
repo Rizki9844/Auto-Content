@@ -2,8 +2,6 @@
 Tests for src.renderer — gradient, base image, frame rendering.
 """
 import numpy as np
-import pytest
-from unittest.mock import patch
 
 from src import config
 from src.renderer import (

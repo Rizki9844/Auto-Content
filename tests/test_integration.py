@@ -3,8 +3,7 @@ Integration test — dry-run the entire pipeline with all external services mock
 Verifies step sequencing, error handling, and data flow without network access.
 """
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+from unittest.mock import patch
 
 
 FAKE_CONTENT = {

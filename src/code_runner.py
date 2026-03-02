@@ -16,9 +16,7 @@ import subprocess
 import logging
 import shutil
 import tempfile
-from pathlib import Path
 
-from src import config
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +152,6 @@ def _is_bash_safe(code: str) -> tuple[bool, str]:
         if "=" in line.split()[0] and not line.split()[0].startswith("-"):
             continue
 
-        first_word = line.split()[0].split("|")[0].strip()
         # Handle pipes: check each command in the pipeline
         for cmd_part in line.split("|"):
             cmd_word = cmd_part.strip().split()[0] if cmd_part.strip() else ""
