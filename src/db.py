@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
-from pymongo.encryption_options import AutoEncryptionOpts
 
 from src import config
 

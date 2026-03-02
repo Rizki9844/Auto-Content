@@ -20,18 +20,27 @@ from pathlib import Path
 class CredentialFilter(logging.Filter):
     """Redact any accidental credential leaks in log output."""
     PATTERNS = [
-        re.compile(r"(mongodb\+srv://[^:]+:)[^@]+(@)", re.I),       # MongoDB URI
-        re.compile(r"(AIza[A-Za-z0-9_-]{35})", re.I),                # Google API key
-        re.compile(r"(ya29\.[A-Za-z0-9_-]+)", re.I),                 # Google access token
-        re.compile(r"(1//[A-Za-z0-9_-]+)", re.I),                    # Google refresh token
+        # (regex, replacement) — each tailored to its capture groups
+        (re.compile(r"(mongodb\+srv://[^:]+:)[^@]+(@)", re.I),
+         r"\1***REDACTED***\2"),
+        (re.compile(r"AIza[A-Za-z0-9_-]{35}", re.I),
+         "***REDACTED_API_KEY***"),
+        (re.compile(r"ya29\.[A-Za-z0-9_-]+", re.I),
+         "***REDACTED_TOKEN***"),
+        (re.compile(r"1//[A-Za-z0-9_-]{20,}", re.I),
+         "***REDACTED_REFRESH***"),
     ]
 
     def filter(self, record):
-        msg = record.getMessage()
-        for pat in self.PATTERNS:
-            msg = pat.sub(r"\1***REDACTED***\2" if pat.groups else "***REDACTED***", msg)
+        # Materialize the message once (handles both %-style and str args)
+        try:
+            msg = record.getMessage()
+        except Exception:
+            return True
+        for pat, repl in self.PATTERNS:
+            msg = pat.sub(repl, msg)
         record.msg = msg
-        record.args = ()
+        record.args = None  # None is safer than () — prevents TypeError on %s
         return True
 
 
@@ -44,6 +53,38 @@ logging.basicConfig(
 # Apply credential filter to root logger
 logging.getLogger().addFilter(CredentialFilter())
 logger = logging.getLogger("pipeline")
+
+
+# ── Content safety filter ──────────────────────────────────────
+_BLOCKED_KEYWORDS = frozenset([
+    # Violence / harm
+    "kill", "murder", "suicide", "bomb", "exploit", "weapon",
+    # Hate speech
+    "racist", "sexist", "slur", "hate speech",
+    # Adult / explicit
+    "porn", "nsfw", "xxx", "nude",
+    # Illegal activity
+    "hack someone", "ddos", "ransomware", "phishing",
+    "steal password", "keylogger",
+])
+
+
+def _is_content_safe(content: dict) -> tuple[bool, str]:
+    """
+    Lightweight keyword filter on generated content.
+    Returns (True, '') if safe, or (False, reason) if blocked.
+    """
+    text = " ".join([
+        content.get("title", ""),
+        content.get("script", ""),
+        content.get("code", ""),
+        content.get("code_before", ""),
+        content.get("expected_output", ""),
+    ]).lower()
+    for kw in _BLOCKED_KEYWORDS:
+        if kw in text:
+            return False, f"Blocked keyword found: '{kw}'"
+    return True, ""
 
 
 def main():
@@ -98,6 +139,11 @@ def main():
         logger.info(f"  ✓ Language: {content['language']}")
         logger.info(f"  ✓ Code:     {len(content['code'])} chars, {content['code'].count(chr(10))+1} lines")
         logger.info(f"  ✓ Script:   {len(content['script'].split())} words")
+
+        # ── Content safety gate ───────────────────────────────
+        safe, reason = _is_content_safe(content)
+        if not safe:
+            raise RuntimeError(f"Content blocked by safety filter: {reason}")
 
         # ╔════════════════════════════════════════════════════╗
         # ║  STEP 1b — Run Code (for output_demo/quiz)        ║

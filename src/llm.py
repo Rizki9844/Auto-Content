@@ -92,7 +92,7 @@ Return valid JSON with this exact schema:
 }"""
 
 MAX_RETRIES = 3
-RETRY_DELAY = 10  # seconds
+BASE_RETRY_DELAY = 5  # seconds (exponential: 5, 10, 20 …)
 
 
 def _repair_json(raw: str) -> dict:
@@ -260,8 +260,9 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
             if 'raw_text' in locals():
                 logger.info(f"Raw response preview: {raw_text[:300]}...")
             if attempt < MAX_RETRIES:
-                logger.info(f"Retrying in {RETRY_DELAY}s...")
-                time.sleep(RETRY_DELAY)
+                delay = BASE_RETRY_DELAY * (2 ** (attempt - 1))  # 5, 10, 20
+                logger.info(f"Retrying in {delay}s...")
+                time.sleep(delay)
 
     raise RuntimeError(
         f"Failed to generate content after {MAX_RETRIES} attempts. "

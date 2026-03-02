@@ -11,7 +11,6 @@ Enhanced with:
 """
 import logging
 import math
-from functools import lru_cache
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -156,6 +155,7 @@ class FrameRenderer:
 
         # Pre-compute everything
         self._load_fonts()
+        self._gradient_bg = self._create_gradient_bg()
         self._tokenize_code()
         if self.code_before:
             self._tokenize_before_code()
@@ -268,22 +268,21 @@ class FrameRenderer:
         return config.DEFAULT_TEXT_COLOR
 
     def _create_gradient_bg(self) -> Image.Image:
-        """Create gradient background image."""
-        img = Image.new("RGB", (self.width, self.height))
-        draw = ImageDraw.Draw(img)
+        """Create gradient background image using numpy (fast)."""
         r1, g1, b1 = config.BG_GRADIENT_TOP
         r2, g2, b2 = config.BG_GRADIENT_BOTTOM
-        for y_pos in range(self.height):
-            ratio = y_pos / self.height
-            r = int(r1 + (r2 - r1) * ratio)
-            g = int(g1 + (g2 - g1) * ratio)
-            b = int(b1 + (b2 - b1) * ratio)
-            draw.line([(0, y_pos), (self.width, y_pos)], fill=(r, g, b))
-        return img
+        # Build gradient via numpy — ~100× faster than draw.line() per row
+        ratios = np.linspace(0, 1, self.height, dtype=np.float32).reshape(-1, 1)
+        top = np.array([r1, g1, b1], dtype=np.float32)
+        bottom = np.array([r2, g2, b2], dtype=np.float32)
+        gradient = (top + (bottom - top) * ratios).astype(np.uint8)
+        # Broadcast to full width
+        arr = np.broadcast_to(gradient[:, np.newaxis, :], (self.height, self.width, 3)).copy()
+        return Image.fromarray(arr, "RGB")
 
     def _create_base_image(self):
         """Build the static code editor base image."""
-        self.base = self._create_gradient_bg()
+        self.base = self._gradient_bg.copy()
         draw = ImageDraw.Draw(self.base)
 
         # Code panel bg
@@ -369,7 +368,7 @@ class FrameRenderer:
 
     def _create_intro_image(self):
         """Create the intro title card."""
-        self.intro = self._create_gradient_bg()
+        self.intro = self._gradient_bg.copy()
         draw = ImageDraw.Draw(self.intro)
 
         center_y = self.height // 2
@@ -421,7 +420,7 @@ class FrameRenderer:
 
     def _create_outro_image(self):
         """Create the outro subscribe card."""
-        self.outro = self._create_gradient_bg()
+        self.outro = self._gradient_bg.copy()
         draw = ImageDraw.Draw(self.outro)
 
         center_y = self.height // 2
@@ -550,8 +549,8 @@ class FrameRenderer:
         """Render intro title card with fade-in."""
         progress = min(t / max(self.intro_end, 0.1), 1.0)
         alpha = _ease_out_cubic(progress)
-        bg = self._create_gradient_bg()
-        frame = Image.blend(bg, self.intro, alpha)
+        # Reuse pre-computed gradient background (not re-created per frame)
+        frame = Image.blend(self._gradient_bg, self.intro, alpha)
         return np.array(frame)
 
     def _render_outro(self, t: float) -> np.ndarray:

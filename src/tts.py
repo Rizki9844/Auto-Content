@@ -82,26 +82,10 @@ def generate_speech(
 
     logger.info(f"Generating TTS: voice={voice}, text={len(text)} chars")
 
-    # Run async edge-tts in sync context
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If already in an async context, create a new loop
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                word_timestamps = pool.submit(
-                    asyncio.run,
-                    _generate_speech_async(text, voice, output_path),
-                ).result()
-        else:
-            word_timestamps = loop.run_until_complete(
-                _generate_speech_async(text, voice, output_path)
-            )
-    except RuntimeError:
-        # No event loop exists yet
-        word_timestamps = asyncio.run(
-            _generate_speech_async(text, voice, output_path)
-        )
+    # Run async edge-tts in sync context (Python 3.10+ safe)
+    word_timestamps = asyncio.run(
+        _generate_speech_async(text, voice, output_path)
+    )
 
     # Verify output
     audio_path = Path(output_path)

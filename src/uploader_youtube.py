@@ -3,10 +3,14 @@ YouTube Shorts upload module.
 Authenticates via OAuth2 refresh token and uploads video using YouTube Data API v3.
 """
 import logging
+import time
 
 from src import config
 
 logger = logging.getLogger(__name__)
+
+UPLOAD_MAX_RETRIES = 3
+UPLOAD_BASE_DELAY = 5  # seconds
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 YOUTUBE_API_SERVICE = "youtube"
@@ -36,9 +40,17 @@ def _build_youtube_service():
         token_uri="https://oauth2.googleapis.com/token",
     )
 
-    # Force token refresh
-    creds.refresh(Request())
-    logger.info("YouTube OAuth token refreshed successfully")
+    # Force token refresh with retry
+    for _attempt in range(1, 4):
+        try:
+            creds.refresh(Request())
+            logger.info("YouTube OAuth token refreshed successfully")
+            break
+        except Exception as e:
+            if _attempt == 3:
+                raise
+            logger.warning(f"Token refresh failed (attempt {_attempt}/3): {e}")
+            time.sleep(2 * _attempt)
 
     return build(YOUTUBE_API_SERVICE, YOUTUBE_API_VERSION, credentials=creds)
 
@@ -112,11 +124,25 @@ def upload_to_youtube(
     logger.info(f"Uploading to YouTube: '{safe_title}'")
 
     response = None
+    retries = 0
     while response is None:
-        status, response = request.next_chunk()
-        if status:
-            pct = int(status.progress() * 100)
-            logger.info(f"Upload progress: {pct}%")
+        try:
+            status, response = request.next_chunk()
+            if status:
+                pct = int(status.progress() * 100)
+                logger.info(f"Upload progress: {pct}%")
+        except Exception as e:
+            retries += 1
+            if retries > UPLOAD_MAX_RETRIES:
+                raise RuntimeError(
+                    f"Upload failed after {UPLOAD_MAX_RETRIES} retries: {e}"
+                ) from e
+            delay = UPLOAD_BASE_DELAY * (2 ** (retries - 1))
+            logger.warning(
+                f"Upload chunk error (retry {retries}/{UPLOAD_MAX_RETRIES}): {e} "
+                f"— retrying in {delay}s"
+            )
+            time.sleep(delay)
 
     video_id = response.get("id", "unknown")
     logger.info(f"Upload complete! https://youtube.com/shorts/{video_id}")
