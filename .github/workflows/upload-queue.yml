@@ -39,6 +39,9 @@ jobs:
       CHANNEL_NAME: ${{ vars.CHANNEL_NAME || '@DevInSeconds' }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      ACTIVE_THEME: ${{ vars.ACTIVE_THEME || 'github_dark' }}
+      AUTO_ROTATE_THEMES: ${{ vars.AUTO_ROTATE_THEMES || '0' }}
+      ENABLE_THUMBNAILS: ${{ vars.ENABLE_THUMBNAILS || '0' }}
 
     steps:
       - name: Checkout repository
