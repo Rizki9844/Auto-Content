@@ -3,7 +3,7 @@
 > **Document ini mencatat seluruh rencana pengembangan berdasarkan hasil audit arsitektur profesional.**
 > Dibuat setelah analisis mendalam terhadap 13 file / 2.680+ baris kode.
 >
-> **Last updated:** 2 Maret 2026
+> **Last updated:** 6 Maret 2026
 
 ---
 
@@ -14,9 +14,9 @@
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
 | 2 | Observability & Testing | ✅ Complete | 7/7 |
 | 3 | Feature Hardening | ✅ Complete | 7/7 |
-| 4 | Scale & Extensibility | ⬜ Not Started | 0/6 |
+| 4 | Scale & Extensibility | 🔄 In Progress | 2/6 |
 
-**Total: 27 tasks** — 21 completed, 6 remaining
+**Total: 27 tasks** — 23 completed, 4 remaining
 
 ---
 
@@ -214,25 +214,29 @@
 
 ---
 
-## ⬜ Phase 4 — Scale & Extensibility
+## 🔄 Phase 4 — Scale & Extensibility
 
 > **Goal:** Skalakan pipeline ke multi-platform, tambahkan scheduling, dan buat arsitektur extensible.
 >
-> **Status:** Not Started
+> **Status:** 🔄 In Progress — 4.1 & 4.2 complete
 
-### 4.1 Multi-Platform Upload
+### 4.1 Multi-Platform Upload ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/uploader_tiktok.py`, `src/uploader_instagram.py` (file baru) |
+| **Target** | `src/uploader_base.py`, `src/uploader_tiktok.py`, `src/uploader_instagram.py` (file baru), update `src/uploader_youtube.py` |
 | **Scope** | Abstraksi uploader interface. Upload ke TikTok dan/atau Instagram Reels selain YouTube Shorts. Config via env variable `UPLOAD_TARGETS=youtube,tiktok,instagram`. |
+| **Status** | ✅ Complete — Commit `6293959` (3 Maret 2026) — 225 tests passing |
+| **Notes** | TikTok & Instagram API credentials setup deferred until all Phase 4 tasks are complete. |
 
-### 4.2 Content Scheduling
+### 4.2 Content Scheduling ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/scheduler.py` (file baru), update `generate.yml` |
+| **Target** | `src/scheduler.py` (baru), `.github/workflows/upload-queue.yml` (baru), update `src/main.py` + `generate.yml` |
 | **Scope** | (1) Generate beberapa video sekaligus (batch mode). (2) Simpan di queue (MongoDB collection `scheduled`). (3) Upload satu per satu pada jadwal optimal (peak viewing times). (4) Cron job terpisah untuk upload dari queue. |
+| **Status** | ✅ Complete — Commit `de46a16` (6 Maret 2026) — 250 tests passing |
+| **Peak slots UTC** | 13:00 (8 AM EST), 18:00 (1 PM EST), 00:00 (7 PM EST) |
 
 ### 4.3 Analytics Dashboard
 
