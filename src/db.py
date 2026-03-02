@@ -99,6 +99,7 @@ def save_record(data: dict) -> str | None:
             "duration_seconds": data.get("duration_seconds", 0),
             "status": data.get("status", "success"),
             "error_message": data.get("error_message"),
+            "metrics": data.get("metrics"),
             "created_at": datetime.now(timezone.utc),
             "published_at": data.get("published_at"),
         }

@@ -12,11 +12,11 @@
 | Phase | Nama | Status | Tasks |
 | :---: | :--- | :---: | :---: |
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
-| 2 | Observability & Testing | ⬜ Not Started | 0/7 |
+| 2 | Observability & Testing | ✅ Complete | 7/7 |
 | 3 | Feature Hardening | ⬜ Not Started | 0/7 |
 | 4 | Scale & Extensibility | ⬜ Not Started | 0/7 |
 
-**Total: 28 tasks** — 7 completed, 21 remaining
+**Total: 28 tasks** — 14 completed, 14 remaining
 
 ---
 
@@ -88,67 +88,63 @@
 
 ---
 
-## ⬜ Phase 2 — Observability & Testing
+## ✅ Phase 2 — Observability & Testing
 
 > **Goal:** Tambahkan unit test, structured logging, dan monitoring agar pipeline bisa dipercaya dalam jangka panjang.
 >
-> **Status:** Not Started
+> **Status:** ✅ Complete
+>
+> **Files changed:** `src/main.py`, `src/db.py`, `.github/workflows/ci.yml`, `pytest.ini`, `tests/` (6 new files)
 
-### 2.1 Unit Tests — Core Modules
+### 2.1 Unit Tests — Core Modules ✅
 
 | Item | Detail |
 | :--- | :--- |
 | **Target** | `tests/test_llm.py`, `tests/test_code_runner.py`, `tests/test_renderer.py` |
-| **Scope** | (1) `_repair_json()` — test 5+ kasus edge (truncated, unescaped newlines, missing braces). (2) `_is_python_safe_ast()` — test banned imports, builtins, attributes, dan kode yang seharusnya AMAN. (3) `_is_js_safe()`, `_is_bash_safe()` — same approach. (4) `_create_gradient_bg()` — output shape dan dtype correct. |
-| **Framework** | `pytest` + `pytest-cov` (target coverage ≥ 70%) |
-| **Priority** | 🔴 High — zero tests saat ini sangat berisiko untuk regressions |
+| **Scope** | (1) `_repair_json()` — 9 edge cases (truncated, unescaped newlines, missing braces, regex fallback). (2) `_validate_content()` — 12 tests (missing fields, defaults, type normalization). (3) `_is_python_safe_ast()` — 22 tests (banned imports, builtins, attributes + safe code). (4) JS/Bash safety — 19 tests. (5) `FrameRenderer` — gradient dtype/shape, char_data, easing, frame rendering. |
+| **Framework** | `pytest 9.0.2` + `pytest-cov 7.0.0` — **135 tests, all passing** |
 
-### 2.2 Unit Tests — Safety Filter & CredentialFilter
+### 2.2 Unit Tests — Safety Filter & CredentialFilter ✅
 
 | Item | Detail |
 | :--- | :--- |
 | **Target** | `tests/test_main.py` |
-| **Scope** | (1) `_is_content_safe()` — test blocked keywords, safe content, edge cases. (2) `CredentialFilter` — test redaction of MongoDB URI, API keys, tokens. Test bahwa pesan normal TIDAK ter-redact. |
+| **Scope** | `CredentialFilter` — 8 tests (MongoDB URI, API key, OAuth/refresh token, normal msg unchanged, args=None). `_is_content_safe()` — 10 tests (4 blocked categories, code/expected_output, case insensitive, missing fields). |
 
-### 2.3 Integration Test — Pipeline Dry-Run
+### 2.3 Integration Test — Pipeline Dry-Run ✅
 
 | Item | Detail |
 | :--- | :--- |
 | **Target** | `tests/test_integration.py` |
-| **Scope** | Mock Gemini API, edge-tts, dan YouTube upload. Run `main()` end-to-end dan verify: (1) record tersimpan ke MongoDB, (2) video file terbuat, (3) tidak ada uncaught exceptions. |
-| **Benefit** | Bisa dijalankan di CI tanpa secrets (semua API di-mock). |
+| **Scope** | 7 tests with full mock pipeline: success run (all steps called), youtube_id in record, notification sent, safety blocks unsafe, missing keys exit, generation failure saves error. Config attributes patched to avoid import-time env caching. |
 
-### 2.4 Structured JSON Logging
-
-| Item | Detail |
-| :--- | :--- |
-| **Target** | `src/main.py` logging config |
-| **Scope** | Tambahkan opsi `LOG_FORMAT=json` via env variable. Output `{"timestamp": "...", "level": "INFO", "module": "pipeline", "message": "..."}`. Berguna jika nanti pakai log aggregator (Datadog, Loki, dll). |
-| **Default** | Tetap human-readable format seperti sekarang jika `LOG_FORMAT` tidak di-set. |
-
-### 2.5 Pipeline Metrics Tracking
+### 2.4 Structured JSON Logging ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/db.py` (tambah field ke MongoDB record) |
-| **Scope** | Track: `gemini_latency_ms`, `tts_latency_ms`, `render_latency_ms`, `upload_latency_ms`, `total_latency_ms`, `retry_count` per step. Simpan di MongoDB record. |
-| **Benefit** | Bisa query MongoDB untuk melihat trend performa seiring waktu. |
+| **Target** | `src/main.py` — `_JsonFormatter` class |
+| **Scope** | `LOG_FORMAT=json` env variable activates JSON output: `{"timestamp", "level", "module", "message"}`. Default remains human-readable. 5 unit tests for schema validation. |
 
-### 2.6 GitHub Actions CI Workflow
-
-| Item | Detail |
-| :--- | :--- |
-| **Target** | `.github/workflows/ci.yml` (workflow baru) |
-| **Scope** | Trigger on PR/push. Run: `py_compile` semua file → `pytest` → `ruff` linter. Block merge jika gagal. |
-| **Benefit** | Mencegah kode rusak masuk ke main branch. |
-
-### 2.7 Health Check Endpoint
+### 2.5 Pipeline Metrics Tracking ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/main.py` atau script terpisah |
-| **Scope** | Command `python -m src.main --health` yang mengecek: (1) Gemini API reachable, (2) MongoDB connection OK, (3) YouTube credentials valid, (4) edge-tts available. Return exit code 0/1. |
-| **Benefit** | Bisa di-schedule sebagai monitoring terpisah di GitHub Actions. |
+| **Target** | `src/main.py` + `src/db.py` |
+| **Scope** | `time.perf_counter()` around every step. Tracked: `gemini_latency_ms`, `tts_latency_ms`, `render_latency_ms`, `upload_latency_ms`, `total_latency_ms`. Saved in `record["metrics"]` → MongoDB. Summary logged on success banner. |
+
+### 2.6 GitHub Actions CI Workflow ✅
+
+| Item | Detail |
+| :--- | :--- |
+| **Target** | `.github/workflows/ci.yml` |
+| **Scope** | Triggers on push/PR to `main`. Steps: (1) `py_compile src/*.py`, (2) `ruff check src/ tests/`, (3) `pytest -m "not integration" --cov=src`. Uploads JUnit XML as artifact. All action SHAs pinned. |
+
+### 2.7 Health Check Endpoint ✅
+
+| Item | Detail |
+| :--- | :--- |
+| **Target** | `src/main.py` — `_health_check()` + `--health` CLI flag |
+| **Scope** | `python -m src.main --health` checks: (1) MongoDB ping, (2) Gemini API key + list-models call, (3) YouTube OAuth creds present, (4) edge-tts importable. Returns exit code 0 (all OK) or 1 (failure). 2 unit tests. |
 
 ---
 
