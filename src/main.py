@@ -10,6 +10,8 @@ Usage:
     python -m src.main                # normal run (generate + upload immediately)
     python -m src.main --batch 3      # generate 3 videos, schedule for peak times
     python -m src.main --upload-queue # upload due jobs from the schedule queue
+    python -m src.main --analytics    # print analytics report to stdout
+    python -m src.main --analytics --save  # also write report to output/
     python -m src.main --health       # health-check (exit 0 = OK)
 """
 import json as _json
@@ -920,10 +922,36 @@ def _health_check() -> int:
     return 0 if all_ok else 1
 
 
+def analytics_pipeline(save: bool = False) -> int:
+    """
+    Phase 4.3: Generate analytics report from MongoDB history.
+
+    Args:
+        save: If True, also write report to output/ directory.
+
+    Returns:
+        0 on success, 1 on error.
+    """
+    from src.analytics import generate_report, save_report
+
+    try:
+        report = generate_report()
+        print(report)
+        if save:
+            path = save_report()
+            logger.info(f"Report saved to: {path}")
+        return 0
+    except Exception as exc:
+        logger.error(f"Analytics failed: {exc}", exc_info=True)
+        return 1
+
+
 if __name__ == "__main__":
     if "--health" in sys.argv:
         sys.exit(_health_check())
-    if "--upload-queue" in sys.argv:
+    if "--analytics" in sys.argv:
+        sys.exit(analytics_pipeline(save="--save" in sys.argv))
+    elif "--upload-queue" in sys.argv:
         upload_queue_pipeline()
     elif "--batch" in sys.argv:
         try:
