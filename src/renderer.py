@@ -13,7 +13,7 @@ import logging
 import math
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 from pygments import lex
 from pygments.lexers import get_lexer_by_name, TextLexer
 from pygments.token import Token
@@ -245,29 +245,8 @@ class FrameRenderer:
 
         self.total_chars = len(self.char_data)
 
-        # Also compute before_char_data for before_after type
+        # Compute preview-positioned char data for before_after (top panel)
         if self.code_before:
-            self.before_char_data = []
-            bx = config.CODE_LEFT
-            by = config.CODE_TOP
-            self.before_total_lines = 1
-            for token_type, token_text in self.before_tokens:
-                color = self._resolve_color(token_type)
-                for ch in token_text:
-                    if ch == "\n":
-                        bx = config.CODE_LEFT
-                        by += self.line_height
-                        self.before_total_lines += 1
-                    elif ch == "\t":
-                        for _ in range(4):
-                            self.before_char_data.append((" ", bx, by, color))
-                            bx += self.char_width
-                    else:
-                        self.before_char_data.append((ch, bx, by, color))
-                        bx += self.char_width
-            self.before_total_chars = len(self.before_char_data)
-
-            # Preview-positioned before_char_data (for top panel)
             self.preview_before_data = []
             px = config.PADDING + 72
             py = config.PREVIEW_CODE_TOP
