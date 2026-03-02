@@ -5,9 +5,14 @@ Supports success (with YouTube link) and failure (with error message) alerts.
 
 Setup:
   1. Create a bot via @BotFather on Telegram → get BOT_TOKEN
-  2. Start a chat with the bot, or add it to a group
-  3. Get your CHAT_ID via https://api.telegram.org/bot<TOKEN>/getUpdates
-  4. Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID as GitHub Secrets
+  2. Start a chat with the bot, or add it to a group → get CHAT_ID
+     (kirim /start ke bot, lalu buka: https://api.telegram.org/bot<TOKEN>/getUpdates)
+  3. Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID as GitHub Secrets /
+     environment variables.
+
+Troubleshoot:
+  - Jalankan: python -m src.notifier  (untuk test kirim notif langsung)
+  - Pastikan bot sudah di-/start dari chat yang sama dengan CHAT_ID
 """
 import logging
 import urllib.request
@@ -69,7 +74,7 @@ def _format_success(
     content_type: str,
     duration: float,
 ) -> str:
-    """Format a success notification message."""
+    """Format a success notification message using HTML."""
     type_emoji = {
         "tip": "💡",
         "output_demo": "▶️",
@@ -79,45 +84,51 @@ def _format_success(
     emoji = type_emoji.get(content_type, "📹")
 
     lines = [
-        f"✅ *Pipeline Berhasil!*",
-        f"",
-        f"{emoji} *{_escape_md(title)}*",
-        f"",
-        f"📝 Tipe: `{content_type}`",
-        f"💻 Bahasa: `{language}`",
-        f"⏱ Durasi: `{duration:.1f}s`",
+        "✅ <b>Pipeline Berhasil!</b>",
+        "",
+        f"{emoji} <b>{_escape_html(title)}</b>",
+        "",
+        f"📝 Tipe: <code>{_escape_html(content_type)}</code>",
+        f"💻 Bahasa: <code>{_escape_html(language)}</code>",
+        f"⏱ Durasi: <code>{duration:.1f}s</code>",
     ]
 
     if youtube_id:
-        lines.append(f"")
-        lines.append(f"🎬 [Tonton di YouTube](https://youtube.com/shorts/{youtube_id})")
+        lines.append("")
+        lines.append(
+            f'🎬 <a href="https://youtube.com/shorts/{youtube_id}">Tonton di YouTube</a>'
+        )
 
-    lines.append(f"")
-    lines.append(f"_{config.CHANNEL_NAME}_")
+    lines.append("")
+    lines.append(f"<i>{_escape_html(config.CHANNEL_NAME)}</i>")
 
     return "\n".join(lines)
 
 
 def _format_failure(title: str, error_message: str) -> str:
-    """Format a failure notification message."""
+    """Format a failure notification message using HTML."""
     lines = [
-        f"❌ *Pipeline Gagal!*",
-        f"",
-        f"📝 Topik: {_escape_md(title or '(unknown)')}",
-        f"",
-        f"⚠️ Error:",
-        f"`{_escape_md(error_message[:300])}`",
-        f"",
-        f"Cek log di GitHub Actions untuk detail.",
+        "❌ <b>Pipeline Gagal!</b>",
+        "",
+        f"📝 Topik: {_escape_html(title or '(unknown)')}",
+        "",
+        "⚠️ Error:",
+        f"<code>{_escape_html(error_message[:300])}</code>",
+        "",
+        "Cek log di GitHub Actions untuk detail.",
     ]
     return "\n".join(lines)
 
 
-def _escape_md(text: str) -> str:
-    """Escape special Markdown characters for Telegram."""
-    for char in ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']:
-        text = text.replace(char, f'\\{char}')
-    return text
+def _escape_html(text: str) -> str:
+    """Escape HTML special characters for Telegram HTML parse_mode."""
+    return (
+        text
+        .replace("&", "&amp;")   # must be first!
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def _send_message(text: str) -> bool:
@@ -127,8 +138,8 @@ def _send_message(text: str) -> bool:
     payload = json.dumps({
         "chat_id": config.TELEGRAM_CHAT_ID,
         "text": text,
-        "parse_mode": "MarkdownV2",
-        "disable_web_page_preview": False,
+        "parse_mode": "HTML",
+        "link_preview_options": {"is_disabled": False},
     }).encode("utf-8")
 
     req = urllib.request.Request(
@@ -140,12 +151,45 @@ def _send_message(text: str) -> bool:
 
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
             if resp.status == 200:
                 logger.info("Telegram notification sent successfully")
                 return True
             else:
-                logger.warning(f"Telegram API returned status {resp.status}")
+                logger.warning(f"Telegram API returned {resp.status}: {body}")
                 return False
+    except urllib.error.HTTPError as e:
+        # Telegram returns 4xx errors as HTTPError — read the body for diagnosis
+        try:
+            body = e.read().decode("utf-8")
+        except Exception:
+            body = str(e)
+        logger.warning(f"Telegram API error {e.code}: {body}")
+        return False
     except Exception as e:
         logger.warning(f"Telegram send failed: {e}")
         return False
+
+
+# ── Quick CLI test ────────────────────────────────────────────
+# Usage: python -m src.notifier
+if __name__ == "__main__":
+    import sys
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s │ %(message)s")
+
+    if not config.TELEGRAM_BOT_TOKEN:
+        print("ERROR: TELEGRAM_BOT_TOKEN not set", file=sys.stderr)
+        sys.exit(1)
+    if not config.TELEGRAM_CHAT_ID:
+        print("ERROR: TELEGRAM_CHAT_ID not set", file=sys.stderr)
+        sys.exit(1)
+
+    ok = send_notification(
+        status="success",
+        title="Python List Trick #Shorts",
+        youtube_id="dQw4w9WgXcQ",
+        language="python",
+        content_type="tip",
+        duration=42.5,
+    )
+    sys.exit(0 if ok else 1)
