@@ -3,9 +3,7 @@ Tests for Phase 3 — Feature Hardening.
 Covers: quality scoring, video verification, deduplication, graceful degradation,
 dynamic font scaling, rate limiting, and error classification.
 """
-import time
-import pytest
-from unittest.mock import patch, MagicMock
+
 
 from src.quality import score_content, _range_score, QUALITY_THRESHOLD
 from src.errors import (
@@ -14,7 +12,7 @@ from src.errors import (
 )
 from src.rate_limiter import RateLimiter, YOUTUBE_DAILY_QUOTA, YOUTUBE_UPLOAD_COST
 from src.renderer import compute_dynamic_font_size
-from src.video import verify_video, MIN_FILE_SIZE_KB, MAX_FILE_SIZE_MB
+from src.video import verify_video
 from src.db import _normalize_code
 
 

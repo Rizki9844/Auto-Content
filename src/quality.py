@@ -57,7 +57,7 @@ def score_content(content: dict, recent_types: list[str] | None = None) -> dict:
 
     # ── 2. Code line count (0–25 points) ──────────────────────
     code = content.get("code", "")
-    code_lines = [l for l in code.splitlines() if l.strip()]
+    code_lines = [line for line in code.splitlines() if line.strip()]
     line_count = len(code_lines)
     breakdown["code_lines"] = _range_score(
         line_count, _CODE_LINE_RANGE[0], _CODE_LINE_RANGE[1], 25
@@ -80,12 +80,12 @@ def score_content(content: dict, recent_types: list[str] | None = None) -> dict:
     code_quality = 0
 
     # 4a. Has indentation (not all flat) → +5
-    if any(l.startswith((" ", "\t")) for l in code_lines):
+    if any(line.startswith((" ", "\t")) for line in code_lines):
         code_quality += 5
 
     # 4b. Average line length reasonable (< 60 chars) → +5
     if code_lines:
-        avg_len = sum(len(l) for l in code_lines) / len(code_lines)
+        avg_len = sum(len(line) for line in code_lines) / len(code_lines)
         if avg_len <= _CODE_CHAR_MAX_PER_LINE:
             code_quality += 5
         else:

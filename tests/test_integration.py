@@ -4,7 +4,7 @@ Verifies step sequencing, error handling, and data flow without network access.
 Updated for Phase 3 (quality scoring, video verification, error classification, etc.).
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 FAKE_CONTENT = {

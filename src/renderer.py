@@ -111,7 +111,7 @@ def compute_dynamic_font_size(code: str, base_size: int = 24) -> int:
     """
     lines = code.rstrip().split("\n")
     num_lines = len(lines)
-    max_line_len = max((len(l) for l in lines), default=0)
+    max_line_len = max((len(line) for line in lines), default=0)
 
     font_size = base_size
 

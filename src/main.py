@@ -120,8 +120,7 @@ def main():
     from src.video import create_video, verify_video
     from src.uploader_youtube import upload_to_youtube
     from src.db import (
-        save_record, save_pending_upload, get_pending_uploads,
-        mark_upload_complete, increment_retry_count,
+        save_record, save_pending_upload,
         check_code_similarity, get_language_frequency,
     )
     from src.code_runner import get_output_for_content
@@ -129,8 +128,7 @@ def main():
     from src.quality import score_content, QUALITY_THRESHOLD
     from src.rate_limiter import RateLimiter
     from src.errors import (
-        classify_error, ErrorClass, PipelineError,
-        TransientError, PermanentError, ContentError,
+        classify_error, PipelineError, ContentError,
     )
 
     logger.info("=" * 55)
