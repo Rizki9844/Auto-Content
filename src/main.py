@@ -13,6 +13,11 @@ Usage:
     python -m src.main --analytics    # print analytics report to stdout
     python -m src.main --analytics --save  # also write report to output/
     python -m src.main --health       # health-check (exit 0 = OK)
+
+    Environment variables for Phase 4.4/4.6:
+    ACTIVE_THEME=monokai              # use a different color theme
+    AUTO_ROTATE_THEMES=1              # rotate themes daily
+    ENABLE_THUMBNAILS=1               # generate + upload YouTube thumbnails
 """
 import json as _json
 import os
@@ -387,6 +392,13 @@ def main():
                     logger.info(f"  ✓ {result.platform}: {result.url}")
                     if result.platform == "youtube":
                         rate_limiter.record_youtube_upload()
+                        # Thumbnail (Phase 4.6)
+                        _thumbnail_step(
+                            youtube_id=result.video_id or "",
+                            title=content["title"],
+                            language=content["language"],
+                            code=content["code"],
+                        )
                 else:
                     upload_results[result.platform] = None
                     classified = classify_error(
@@ -552,6 +564,33 @@ def _cleanup_output_dir():
                 logger.debug(f"Cleaned up: {f.name}")
     except Exception as e:
         logger.warning(f"Cleanup failed (non-critical): {e}")
+
+
+def _thumbnail_step(
+    youtube_id: str,
+    title: str,
+    language: str,
+    code: str,
+) -> None:
+    """
+    Phase 4.6: Generate and upload a thumbnail (best-effort, never raises).
+    Only runs when config.ENABLE_THUMBNAILS == "1".
+    """
+    from src import config as _cfg
+    if _cfg.ENABLE_THUMBNAILS != "1":
+        return
+    try:
+        from src.thumbnail import generate_thumbnail, upload_thumbnail
+        thumb_path = generate_thumbnail(
+            title=title,
+            language=language,
+            code=code,
+        )
+        ok = upload_thumbnail(youtube_video_id=youtube_id, image_path=thumb_path)
+        if ok:
+            logger.info(f"Thumbnail uploaded for {youtube_id}")
+    except Exception as exc:
+        logger.warning(f"Thumbnail step failed (non-critical): {exc}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -787,6 +826,13 @@ def upload_queue_pipeline() -> int:
                 logger.info(f"    ✓ {result.platform}: {result.url}")
                 if result.platform == "youtube":
                     rate_limiter.record_youtube_upload()
+                    # Thumbnail (Phase 4.6)
+                    _thumbnail_step(
+                        youtube_id=result.video_id or "",
+                        title=title,
+                        language=job.get("language", ""),
+                        code=job.get("code", ""),
+                    )
             else:
                 classified = classify_error(
                     RuntimeError(result.error), step=f"queue_{result.platform}"

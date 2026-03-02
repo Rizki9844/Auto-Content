@@ -1,5 +1,4 @@
-"""
-Video frame renderer v2 — Pillow + Pygments.
+"""Video frame renderer v2 — Pillow + Pygments.
 Enhanced with:
   - Intro title card with gradient accent
   - Multiple content types (tip, output_demo, quiz, before_after)
@@ -8,6 +7,7 @@ Enhanced with:
   - Smoother animations with easing
   - Karaoke-style subtitles synced to TTS
   - Channel branding watermark
+  - Theme system support (Phase 4.4)
 """
 import logging
 import math
@@ -185,6 +185,17 @@ class FrameRenderer:
         self.code_before = code_before
         self.title = title
 
+        # Apply active theme (Phase 4.4) — patches config before any rendering
+        try:
+            from src.theme_loader import get_active_theme, patch_config
+            _theme = get_active_theme()
+            patch_config(_theme)
+            from src.theme_loader import build_syntax_colors
+            self._syntax_colors = build_syntax_colors(_theme)
+        except Exception as _te:
+            logger.debug(f"Theme loader unavailable, using defaults: {_te}")
+            self._syntax_colors = SYNTAX_COLORS
+
         # Intro/outro timing
         self.intro_end = min(config.INTRO_DURATION, duration * 0.15)
         self.outro_start = max(duration - config.OUTRO_DURATION, duration * 0.85)
@@ -204,6 +215,8 @@ class FrameRenderer:
                 self.word_timestamps.append(wt)
 
         # Pre-compute everything
+        self.total_chars = 0
+        self.total_lines = 0
         self._load_fonts()
         self._gradient_bg = self._create_gradient_bg()
         self._tokenize_code()
@@ -334,8 +347,8 @@ class FrameRenderer:
     def _resolve_color(self, token_type) -> str:
         tt = token_type
         while tt:
-            if tt in SYNTAX_COLORS:
-                return SYNTAX_COLORS[tt]
+            if tt in self._syntax_colors:
+                return self._syntax_colors[tt]
             tt = tt.parent
         return config.DEFAULT_TEXT_COLOR
 

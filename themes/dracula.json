@@ -1,0 +1,59 @@
+{
+    "_name": "Dracula",
+    "_description": "Dracula — purple-tinted dark theme",
+
+    "bg_gradient_top":    [40, 42, 54],
+    "bg_gradient_bottom": [33, 34, 44],
+
+    "chrome_bg":         "#44475a",
+    "chrome_dot_colors": ["#ff5555", "#f1fa8c", "#50fa7b"],
+    "code_bg":           "#282a36",
+    "line_highlight":    "#44475a",
+    "separator":         "#6272a4",
+    "line_num_color":    "#6272a4",
+    "default_text_color":"#f8f8f2",
+    "cursor_color":      "#f8f8f2",
+
+    "subtitle_text_color":  "#f8f8f2",
+    "subtitle_active_color":"#f1fa8c",
+    "subtitle_bg_color":    "#191a23",
+    "watermark_color":      "#6272a4",
+    "preview_running_color":"#50fa7b",
+
+    "output_bg":           "#21222c",
+    "output_header_bg":    "#44475a",
+    "output_text_color":   "#50fa7b",
+    "output_error_color":  "#ff5555",
+    "output_prompt_color": "#6272a4",
+
+    "accent_gradient_left":  "#bd93f9",
+    "accent_gradient_right": "#ff79c6",
+    "intro_title_color":     "#f8f8f2",
+    "intro_subtitle_color":  "#6272a4",
+    "outro_cta_color":       "#f1fa8c",
+
+    "syntax": {
+        "keyword":            "#ff79c6",
+        "keyword_constant":   "#bd93f9",
+        "keyword_type":       "#8be9fd",
+        "name_function":      "#50fa7b",
+        "name_class":         "#8be9fd",
+        "name_decorator":     "#50fa7b",
+        "name_builtin":       "#8be9fd",
+        "name_builtin_pseudo":"#bd93f9",
+        "name_tag":           "#ff79c6",
+        "name_attribute":     "#50fa7b",
+        "name_variable":      "#f8f8f2",
+        "name_constant":      "#bd93f9",
+        "string":             "#f1fa8c",
+        "string_doc":         "#6272a4",
+        "string_escape":      "#bd93f9",
+        "string_affix":       "#ff79c6",
+        "number":             "#bd93f9",
+        "comment":            "#6272a4",
+        "comment_preproc":    "#ff79c6",
+        "operator":           "#ff79c6",
+        "punctuation":        "#f8f8f2",
+        "default":            "#f8f8f2"
+    }
+}

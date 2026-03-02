@@ -1,0 +1,59 @@
+{
+    "_name": "Monokai Pro",
+    "_description": "Monokai Pro — warm dark with vivid accent colors",
+
+    "bg_gradient_top":    [39, 40, 34],
+    "bg_gradient_bottom": [30, 30, 27],
+
+    "chrome_bg":         "#3e3d32",
+    "chrome_dot_colors": ["#ff5f57", "#febc2e", "#28c840"],
+    "code_bg":           "#272822",
+    "line_highlight":    "#3e3d32",
+    "separator":         "#49483e",
+    "line_num_color":    "#75715e",
+    "default_text_color":"#f8f8f2",
+    "cursor_color":      "#f8f8f0",
+
+    "subtitle_text_color":  "#f8f8f2",
+    "subtitle_active_color":"#e6db74",
+    "subtitle_bg_color":    "#1a1a16",
+    "watermark_color":      "#75715e",
+    "preview_running_color":"#a6e22e",
+
+    "output_bg":           "#1e1f1c",
+    "output_header_bg":    "#3e3d32",
+    "output_text_color":   "#a6e22e",
+    "output_error_color":  "#f92672",
+    "output_prompt_color": "#75715e",
+
+    "accent_gradient_left":  "#f92672",
+    "accent_gradient_right": "#66d9e8",
+    "intro_title_color":     "#f8f8f2",
+    "intro_subtitle_color":  "#75715e",
+    "outro_cta_color":       "#e6db74",
+
+    "syntax": {
+        "keyword":            "#f92672",
+        "keyword_constant":   "#ae81ff",
+        "keyword_type":       "#66d9e8",
+        "name_function":      "#a6e22e",
+        "name_class":         "#a6e22e",
+        "name_decorator":     "#a6e22e",
+        "name_builtin":       "#66d9e8",
+        "name_builtin_pseudo":"#f8f8f2",
+        "name_tag":           "#f92672",
+        "name_attribute":     "#a6e22e",
+        "name_variable":      "#f8f8f2",
+        "name_constant":      "#ae81ff",
+        "string":             "#e6db74",
+        "string_doc":         "#75715e",
+        "string_escape":      "#ae81ff",
+        "string_affix":       "#f92672",
+        "number":             "#ae81ff",
+        "comment":            "#75715e",
+        "comment_preproc":    "#f92672",
+        "operator":           "#f92672",
+        "punctuation":        "#f8f8f2",
+        "default":            "#f8f8f2"
+    }
+}

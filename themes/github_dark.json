@@ -1,0 +1,59 @@
+{
+    "_name": "GitHub Dark",
+    "_description": "GitHub's dark theme — the default pipeline look",
+
+    "bg_gradient_top":    [13, 17, 23],
+    "bg_gradient_bottom": [22, 27, 34],
+
+    "chrome_bg":         "#1c2128",
+    "chrome_dot_colors": ["#ff5f57", "#febc2e", "#28c840"],
+    "code_bg":           "#0d1117",
+    "line_highlight":    "#161b22",
+    "separator":         "#30363d",
+    "line_num_color":    "#484f58",
+    "default_text_color":"#e6edf3",
+    "cursor_color":      "#58a6ff",
+
+    "subtitle_text_color":  "#ffffff",
+    "subtitle_active_color":"#ffd700",
+    "subtitle_bg_color":    "#010409",
+    "watermark_color":      "#484f58",
+    "preview_running_color":"#58a6ff",
+
+    "output_bg":           "#161b22",
+    "output_header_bg":    "#1c2128",
+    "output_text_color":   "#7ee787",
+    "output_error_color":  "#ff7b72",
+    "output_prompt_color": "#8b949e",
+
+    "accent_gradient_left":  "#58a6ff",
+    "accent_gradient_right": "#d2a8ff",
+    "intro_title_color":     "#ffffff",
+    "intro_subtitle_color":  "#8b949e",
+    "outro_cta_color":       "#ffd700",
+
+    "syntax": {
+        "keyword":            "#ff7b72",
+        "keyword_constant":   "#79c0ff",
+        "keyword_type":       "#ffa657",
+        "name_function":      "#d2a8ff",
+        "name_class":         "#ffa657",
+        "name_decorator":     "#d2a8ff",
+        "name_builtin":       "#ffa657",
+        "name_builtin_pseudo":"#79c0ff",
+        "name_tag":           "#7ee787",
+        "name_attribute":     "#79c0ff",
+        "name_variable":      "#ffa657",
+        "name_constant":      "#79c0ff",
+        "string":             "#a5d6ff",
+        "string_doc":         "#8b949e",
+        "string_escape":      "#79c0ff",
+        "string_affix":       "#ff7b72",
+        "number":             "#79c0ff",
+        "comment":            "#8b949e",
+        "comment_preproc":    "#ff7b72",
+        "operator":           "#ff7b72",
+        "punctuation":        "#e6edf3",
+        "default":            "#e6edf3"
+    }
+}

@@ -173,6 +173,28 @@ UPLOAD_TARGETS = os.environ.get("UPLOAD_TARGETS", "youtube")
 
 
 # ══════════════════════════════════════════════════════════════
+#  THEME SYSTEM  (Phase 4.4)
+# ══════════════════════════════════════════════════════════════
+# Name of the color theme to load from themes/<name>.json
+ACTIVE_THEME = os.environ.get("ACTIVE_THEME", "github_dark")
+
+# Set to "1" to rotate themes daily (overrides ACTIVE_THEME)
+AUTO_ROTATE_THEMES = os.environ.get("AUTO_ROTATE_THEMES", "0")
+
+# Comma-separated list used when AUTO_ROTATE_THEMES=1
+THEME_ROTATION_LIST = os.environ.get(
+    "THEME_ROTATION_LIST", "github_dark,monokai,dracula"
+)
+
+
+# ══════════════════════════════════════════════════════════════
+#  THUMBNAIL  (Phase 4.6)
+# ══════════════════════════════════════════════════════════════
+# Set to "1" to generate + upload a custom thumbnail after each upload
+ENABLE_THUMBNAILS = os.environ.get("ENABLE_THUMBNAILS", "0")
+
+
+# ══════════════════════════════════════════════════════════════
 #  TELEGRAM NOTIFICATIONS
 # ══════════════════════════════════════════════════════════════
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
