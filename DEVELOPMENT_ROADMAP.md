@@ -14,9 +14,9 @@
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
 | 2 | Observability & Testing | ✅ Complete | 7/7 |
 | 3 | Feature Hardening | ✅ Complete | 7/7 |
-| 4 | Scale & Extensibility | 🔄 In Progress | 5/6 |
+| 4 | Scale & Extensibility | ✅ Complete | 6/6 |
 
-**Total: 27 tasks** — 26 completed, 1 remaining
+**Total: 27 tasks** — 27 completed, 0 remaining 🎉
 
 ---
 
@@ -218,7 +218,7 @@
 
 > **Goal:** Skalakan pipeline ke multi-platform, tambahkan scheduling, dan buat arsitektur extensible.
 >
-> **Status:** 🔄 In Progress — 4.1, 4.2, 4.3, 4.4 & 4.6 complete — 4.5 remaining
+> **Status:** ✅ Complete — All 6 tasks done
 
 ### 4.1 Multi-Platform Upload ✅
 
@@ -256,12 +256,14 @@
 | **Status** | ✅ Complete — Commit `afac64b` (6 Maret 2026) — 323 tests passing |
 | **Usage** | `ACTIVE_THEME=monokai` · `AUTO_ROTATE_THEMES=1` · `THEME_ROTATION_LIST=github_dark,monokai,dracula` |
 
-### 4.5 Plugin Architecture
+### 4.5 Plugin Architecture ✅
 
 | Item | Detail |
 | :--- | :--- |
 | **Target** | `src/plugins/` (directory baru) |
-| **Scope** | Hook system: `on_content_generated`, `on_video_rendered`, `on_uploaded`, `on_error`. Plugin bisa: auto-post ke Twitter/X, send ke Discord webhook, generate thumbnail, dll. Plugin discovery via `src/plugins/__init__.py`. |
+| **Scope** | Hook system: `on_content_generated`, `on_video_rendered`, `on_uploaded`, `on_pipeline_complete`, `on_error`. Built-in plugins: Discord webhook (`builtin_discord`), JSON event logger (`builtin_event_logger`). Plugin discovery via `src/plugins/__init__.py`. Custom plugins via `PLUGINS` env var. |
+| **Status** | ✅ Complete — Commit `a941b17` (6 Maret 2026) — 360 tests passing |
+| **Usage** | `DISCORD_WEBHOOK_URL=https://...` · `PLUGINS=mypackage.social` |
 
 ### 4.6 Thumbnail Generation ✅
 
