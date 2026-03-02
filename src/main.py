@@ -3,12 +3,14 @@ Main orchestrator — runs the complete pipeline:
   1. Generate content (Gemini Pro)
   2. Generate voiceover (edge-tts)
   3. Render video (Pillow + Pygments + moviepy)
-  4. Upload to YouTube Shorts
+  4. Upload to configured platforms
   5. Save record to MongoDB Atlas
 
 Usage:
-    python -m src.main            # normal run
-    python -m src.main --health   # health-check (exit 0 = OK)
+    python -m src.main                # normal run (generate + upload immediately)
+    python -m src.main --batch 3      # generate 3 videos, schedule for peak times
+    python -m src.main --upload-queue # upload due jobs from the schedule queue
+    python -m src.main --health       # health-check (exit 0 = OK)
 """
 import json as _json
 import os
@@ -551,8 +553,307 @@ def _cleanup_output_dir():
 
 
 # ══════════════════════════════════════════════════════════════
-#  HEALTH CHECK  (python -m src.main --health)
+#  BATCH PIPELINE  (python -m src.main --batch N)
 # ══════════════════════════════════════════════════════════════
+def batch_pipeline(n: int) -> int:
+    """
+    Phase 4.2: Generate ``n`` videos and add them to the publish queue.
+
+    Each video is assigned the next available peak-time slot.
+    Videos are **not** uploaded immediately — ``upload_queue_pipeline``
+    handles that at the scheduled time.
+
+    Returns the number of videos successfully queued.
+    """
+    from src import config
+    from src.llm import generate_content
+    from src.tts import generate_speech
+    from src.video import create_video, verify_video
+    from src.db import check_code_similarity, get_language_frequency
+    from src.code_runner import get_output_for_content
+    from src.quality import score_content
+    from src.rate_limiter import RateLimiter
+    from src.errors import classify_error
+    from src.scheduler import add_to_schedule, next_available_slots
+
+    logger.info("=" * 55)
+    logger.info(f"  Batch Pipeline — Generating {n} video(s)")
+    logger.info("=" * 55)
+
+    errors = []
+    if not config.GEMINI_API_KEY:
+        errors.append("GEMINI_API_KEY")
+    if not config.MONGODB_URI:
+        errors.append("MONGODB_URI")
+    if errors:
+        logger.error(f"Missing required secrets: {', '.join(errors)}")
+        sys.exit(1)
+
+    rate_limiter = RateLimiter()
+    lang_freq = get_language_frequency()
+
+    # Reserve N slots upfront so each video gets a distinct time
+    slots = next_available_slots(n)
+    if len(slots) < n:
+        logger.warning(f"Only {len(slots)} slots available (requested {n})")
+        n = len(slots)
+
+    queued = 0
+
+    for i in range(n):
+        slot = slots[i]
+        logger.info(f"  [{i + 1}/{n}] Generating for slot {slot.strftime('%Y-%m-%d %H:%M UTC')}...")
+
+        # Rate limit guard
+        delay = rate_limiter.pre_gemini_call()
+        if delay > 0:
+            time.sleep(delay)
+
+        try:
+            content = generate_content(
+                avoid_languages=lang_freq.get("suggested_avoid", []),
+            )
+            rate_limiter.record_gemini_call()
+
+            # Safety gate
+            safe, reason = _is_content_safe(content)
+            if not safe:
+                logger.warning(f"  [{i + 1}] Blocked: {reason} — skipping")
+                continue
+
+            # Quality check (one attempt only in batch mode)
+            quality = score_content(content, recent_types=lang_freq.get("recent_types", []))
+            if not quality["passed"]:
+                logger.warning(
+                    f"  [{i + 1}] Quality {quality['total_score']}/100 below threshold "
+                    f"— proceeding anyway (batch mode)"
+                )
+
+            # TTS
+            audio_path, word_timestamps = generate_speech(
+                text=content["script"],
+                voice=config.TTS_VOICE,
+            )
+
+            # Code execution (for output_demo / quiz)
+            code_output = get_output_for_content(content)
+
+            # Render
+            video_path = create_video(
+                code=content["code"],
+                language=content["language"],
+                word_timestamps=word_timestamps,
+                audio_path=audio_path,
+                channel_name=config.CHANNEL_NAME,
+                content_type=content.get("content_type", "tip"),
+                code_output=code_output,
+                code_before=content.get("code_before"),
+                title=content["title"],
+            )
+
+            # Video verification
+            vq = verify_video(video_path)
+            if not vq["passed"]:
+                logger.warning(
+                    f"  [{i + 1}] Video quality check failed: {vq['errors']} — skipping"
+                )
+                continue
+
+            # Similarity guard
+            sim = check_code_similarity(content["code"])
+            if sim["is_duplicate"]:
+                logger.warning(
+                    f"  [{i + 1}] Code too similar to existing ({sim['max_similarity']:.0%}) "
+                    f"— skipping"
+                )
+                continue
+
+            # Add to schedule queue
+            add_to_schedule(
+                content=content,
+                video_path=video_path,
+                audio_path=audio_path,
+                publish_at=slot,
+                quality_score=float(quality["total_score"]),
+            )
+            queued += 1
+            logger.info(f"  [{i + 1}] ✓ Queued for {slot.strftime('%Y-%m-%d %H:%M UTC')}")
+
+        except Exception as exc:
+            classified = classify_error(exc, step=f"batch_item_{i + 1}")
+            logger.error(
+                f"  [{i + 1}] Failed [{classified.error_class}]: {exc}",
+                exc_info=True,
+            )
+
+    logger.info("=" * 55)
+    logger.info(f"  Batch complete: {queued}/{n} video(s) queued")
+    logger.info("=" * 55)
+    return queued
+
+
+# ══════════════════════════════════════════════════════════════
+#  UPLOAD QUEUE PIPELINE  (python -m src.main --upload-queue)
+# ══════════════════════════════════════════════════════════════
+def upload_queue_pipeline() -> int:
+    """
+    Phase 4.2: Upload all due jobs from the ``scheduled`` collection.
+
+    A job is "due" when ``publish_at <= now`` and ``status == pending``.
+    Each job is uploaded via all configured uploaders (Phase 4.1).
+
+    Returns the number of jobs successfully uploaded.
+    """
+    from src import config
+    from src.uploader_base import get_uploaders
+    from src.db import save_record
+    from src.notifier import send_notification
+    from src.rate_limiter import RateLimiter
+    from src.errors import classify_error
+    from src.scheduler import (
+        get_due_jobs, mark_job_done, mark_job_failed, get_schedule_summary,
+    )
+
+    logger.info("=" * 55)
+    logger.info("  Upload Queue Pipeline — Processing due jobs")
+    logger.info("=" * 55)
+
+    errors = []
+    if not config.GEMINI_API_KEY:
+        errors.append("GEMINI_API_KEY")
+    if not config.MONGODB_URI:
+        errors.append("MONGODB_URI")
+    if errors:
+        logger.error(f"Missing required secrets: {', '.join(errors)}")
+        sys.exit(1)
+
+    rate_limiter = RateLimiter()
+    uploaders = get_uploaders()
+    due_jobs = get_due_jobs(limit=5)
+
+    if not due_jobs:
+        summary = get_schedule_summary()
+        logger.info(
+            f"No due jobs. Queue: {summary['pending_future']} pending, "
+            f"{summary['done_today']} done today."
+        )
+        return 0
+
+    logger.info(f"Found {len(due_jobs)} due job(s) to process...")
+    succeeded = 0
+
+    for job in due_jobs:
+        job_id = job["_id"]
+        title = job.get("title", "Untitled")
+        video_path = job.get("video_path", "")
+
+        if not video_path or not os.path.exists(video_path):
+            logger.warning(f"Job {job_id}: video file missing '{video_path}' — marking failed")
+            mark_job_failed(job_id, "Video file not found on disk")
+            continue
+
+        logger.info(f"  → Uploading '{title}' (job {job_id})...")
+
+        # Quota check for YouTube
+        quota_status = rate_limiter.check_youtube_quota()
+        if not quota_status["can_upload"]:
+            logger.warning("YouTube quota exhausted — stopping queue processing")
+            break
+
+        description_parts = [
+            job.get("script", ""),
+            "",
+            " ".join(job.get("hashtags", [])),
+            "",
+            f"Generated by {config.CHANNEL_NAME} pipeline",
+        ]
+        description = "\n".join(description_parts)
+
+        upload_results: dict[str, str | None] = {}
+        any_success = False
+
+        for uploader in uploaders:
+            result = uploader.upload(
+                video_path=video_path,
+                title=title,
+                description=description,
+                tags=job.get("hashtags", []),
+            )
+            upload_results[result.platform] = result.video_id if result.success else None
+            if result.success:
+                any_success = True
+                logger.info(f"    ✓ {result.platform}: {result.url}")
+                if result.platform == "youtube":
+                    rate_limiter.record_youtube_upload()
+            else:
+                classified = classify_error(
+                    RuntimeError(result.error), step=f"queue_{result.platform}"
+                )
+                logger.warning(f"    ✗ {result.platform} ({classified.error_class}): {result.error[:150]}")
+
+        if any_success:
+            mark_job_done(job_id, upload_results)
+            youtube_id = upload_results.get("youtube")
+
+            # Save to history collection
+            from src.tts import get_audio_duration
+            try:
+                duration = round(get_audio_duration(job.get("audio_path", "")), 1)
+            except Exception:
+                duration = 0
+
+            record = {
+                "status": "success",
+                "title": title,
+                "script": job.get("script", ""),
+                "language": job.get("language", ""),
+                "hashtags": job.get("hashtags", []),
+                "content_type": job.get("content_type", "tip"),
+                "youtube_id": youtube_id,
+                "upload_results": upload_results,
+                "quality_score": job.get("quality_score", 0),
+                "duration_seconds": duration,
+                "created_at": job.get("created_at", datetime.now(timezone.utc)),
+                "published_at": datetime.now(timezone.utc),
+                "source": "scheduled_queue",
+            }
+            try:
+                save_record(record)
+            except Exception as db_err:
+                logger.warning(f"Could not save history record: {db_err}")
+
+            # Telegram notification
+            try:
+                send_notification(
+                    status="success",
+                    title=title,
+                    youtube_id=youtube_id,
+                    language=job.get("language", ""),
+                    content_type=job.get("content_type", "tip"),
+                    duration=duration,
+                )
+            except Exception:
+                pass
+
+            succeeded += 1
+        else:
+            mark_job_failed(job_id, "All uploaders failed")
+            try:
+                send_notification(
+                    status="failed",
+                    title=title,
+                    error_message="All upload platforms failed",
+                )
+            except Exception:
+                pass
+
+    logger.info("=" * 55)
+    logger.info(f"  Queue run complete: {succeeded}/{len(due_jobs)} job(s) uploaded")
+    logger.info("=" * 55)
+    return succeeded
+
+
+
 def _health_check() -> int:
     """
     Verify external dependencies are reachable.
@@ -622,4 +923,15 @@ def _health_check() -> int:
 if __name__ == "__main__":
     if "--health" in sys.argv:
         sys.exit(_health_check())
-    main()
+    if "--upload-queue" in sys.argv:
+        upload_queue_pipeline()
+    elif "--batch" in sys.argv:
+        try:
+            idx = sys.argv.index("--batch")
+            n = int(sys.argv[idx + 1])
+        except (IndexError, ValueError):
+            logger.error("Usage: python -m src.main --batch <N>")
+            sys.exit(1)
+        batch_pipeline(n)
+    else:
+        main()
