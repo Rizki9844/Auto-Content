@@ -6,6 +6,7 @@ import logging
 import time
 
 from src import config
+from src.uploader_base import UploaderBase, UploadResult, register_uploader
 
 logger = logging.getLogger(__name__)
 
@@ -148,3 +149,51 @@ def upload_to_youtube(
     logger.info(f"Upload complete! https://youtube.com/shorts/{video_id}")
 
     return video_id
+
+
+# ──────────────────────────────────────────────────────────────
+#  Adapter class for unified uploader interface
+# ──────────────────────────────────────────────────────────────
+@register_uploader
+class YouTubeUploader(UploaderBase):
+    """YouTube Shorts uploader using the Data API v3."""
+
+    @property
+    def name(self) -> str:
+        return "youtube"
+
+    def is_configured(self) -> bool:
+        return bool(config.YOUTUBE_CLIENT_ID and config.YOUTUBE_REFRESH_TOKEN)
+
+    def upload(
+        self,
+        video_path: str,
+        title: str,
+        description: str,
+        tags: list[str] | None = None,
+    ) -> UploadResult:
+        try:
+            video_id = upload_to_youtube(
+                video_path=video_path,
+                title=title,
+                description=description,
+                tags=tags,
+            )
+            if video_id:
+                return UploadResult(
+                    platform="youtube",
+                    success=True,
+                    video_id=video_id,
+                    url=f"https://youtube.com/shorts/{video_id}",
+                )
+            return UploadResult(
+                platform="youtube",
+                success=False,
+                error="Upload returned None (credentials missing or skipped)",
+            )
+        except Exception as exc:
+            return UploadResult(
+                platform="youtube",
+                success=False,
+                error=str(exc)[:500],
+            )

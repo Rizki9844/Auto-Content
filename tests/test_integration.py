@@ -1,10 +1,12 @@
 """
 Integration test — dry-run the entire pipeline with all external services mocked.
 Verifies step sequencing, error handling, and data flow without network access.
-Updated for Phase 3 (quality scoring, video verification, error classification, etc.).
+Updated for Phase 4.1 (multi-platform upload via UploaderBase).
 """
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+
+from src.uploader_base import UploadResult
 
 
 FAKE_CONTENT = {
@@ -25,22 +27,37 @@ FAKE_CONTENT = {
 }
 
 
+def _make_fake_yt_uploader():
+    """Create a mock uploader that mimics YouTubeUploader."""
+    uploader = MagicMock()
+    uploader.name = "youtube"
+    uploader.is_configured.return_value = True
+    uploader.upload.return_value = UploadResult(
+        platform="youtube",
+        success=True,
+        video_id="dQw4w9WgXcQ",
+        url="https://youtube.com/shorts/dQw4w9WgXcQ",
+    )
+    return uploader
+
+
 @pytest.fixture
 def _mock_pipeline(monkeypatch):
     """Patch all external services so the pipeline can run in a vacuum."""
-    # Config reads env vars at import time — patch the already-loaded attributes
     import src.config as _cfg
     monkeypatch.setattr(_cfg, "GEMINI_API_KEY", "fake-key")
     monkeypatch.setattr(_cfg, "MONGODB_URI", "mongodb+srv://fake")
+
+    fake_uploader = _make_fake_yt_uploader()
 
     with (
         patch("src.llm.generate_content", return_value=FAKE_CONTENT) as m_gen,
         patch("src.tts.generate_speech") as m_tts,
         patch("src.video.create_video") as m_video,
         patch("src.video.verify_video") as m_verify,
-        patch("src.uploader_youtube.upload_to_youtube") as m_upload,
+        patch("src.uploader_base.get_uploaders", return_value=[fake_uploader]) as m_get_up,
         patch("src.db.save_record") as m_save,
-        patch("src.db.get_pending_uploads", return_value=[]) as m_pending,
+        patch("src.db.get_pending_uploads", return_value=[]),
         patch("src.db.check_code_similarity") as m_sim,
         patch("src.db.get_language_frequency") as m_lang_freq,
         patch("src.code_runner.get_output_for_content") as m_code,
@@ -48,14 +65,12 @@ def _mock_pipeline(monkeypatch):
         patch("src.tts.get_audio_duration", return_value=12.5),
         patch("src.main._cleanup_output_dir"),
     ):
-        # TTS returns a fake path + timestamps
         m_tts.return_value = (
             "/tmp/fake_audio.mp3",
             [{"text": "Test", "start_s": 0.0, "end_s": 0.5}],
         )
         m_video.return_value = "/tmp/fake_video.mp4"
         m_verify.return_value = {"passed": True, "checks": {}, "errors": []}
-        m_upload.return_value = "dQw4w9WgXcQ"
         m_save.return_value = "64a1b2c3d4e5f678901234ab"
         m_code.return_value = "List has 3 items"
         m_sim.return_value = {"is_duplicate": False, "max_similarity": 0.1, "similar_to": ""}
@@ -71,9 +86,9 @@ def _mock_pipeline(monkeypatch):
             "tts": m_tts,
             "video": m_video,
             "verify": m_verify,
-            "upload": m_upload,
+            "uploader": fake_uploader,
+            "get_uploaders": m_get_up,
             "save": m_save,
-            "pending": m_pending,
             "similarity": m_sim,
             "lang_freq": m_lang_freq,
             "code": m_code,
@@ -88,16 +103,13 @@ class TestPipelineDryRun:
     def test_success_run(self, _mock_pipeline):
         """Pipeline should complete without errors when everything works."""
         from src.main import main
-
-        # Should NOT raise
         main()
 
-        # Verify call sequence
         _mock_pipeline["generate"].assert_called_once()
         _mock_pipeline["tts"].assert_called_once()
         _mock_pipeline["video"].assert_called_once()
         _mock_pipeline["verify"].assert_called_once()
-        _mock_pipeline["upload"].assert_called_once()
+        _mock_pipeline["uploader"].upload.assert_called_once()
         _mock_pipeline["save"].assert_called_once()
         _mock_pipeline["notify"].assert_called_once()
 
@@ -108,6 +120,14 @@ class TestPipelineDryRun:
         save_args = _mock_pipeline["save"].call_args[0][0]
         assert save_args["youtube_id"] == "dQw4w9WgXcQ"
         assert save_args["status"] == "success"
+
+    def test_save_record_has_upload_results(self, _mock_pipeline):
+        """Upload results dict should contain platform → video_id mappings."""
+        from src.main import main
+        main()
+
+        save_args = _mock_pipeline["save"].call_args[0][0]
+        assert save_args["upload_results"]["youtube"] == "dQw4w9WgXcQ"
 
     def test_notification_on_success(self, _mock_pipeline):
         from src.main import main
@@ -155,8 +175,23 @@ class TestPipelineDryRun:
         with pytest.raises(SystemExit):
             main()
 
-        # Failure should still be saved to MongoDB
         _mock_pipeline["save"].assert_called_once()
         save_args = _mock_pipeline["save"].call_args[0][0]
         assert save_args["status"] == "failed"
         assert "quota" in save_args["error_message"].lower()
+
+    def test_multi_platform_upload_failure_graceful(self, _mock_pipeline):
+        """If an uploader fails, pipeline should still save record (not crash)."""
+        _mock_pipeline["uploader"].upload.return_value = UploadResult(
+            platform="youtube",
+            success=False,
+            error="Network timeout",
+        )
+
+        from src.main import main
+        # Should NOT raise — graceful degradation
+        main()
+
+        save_args = _mock_pipeline["save"].call_args[0][0]
+        assert save_args["youtube_id"] is None
+        assert save_args["status"] == "rendered_not_uploaded"

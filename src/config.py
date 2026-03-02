@@ -160,6 +160,17 @@ YOUTUBE_CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID", "")
 YOUTUBE_CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET", "")
 YOUTUBE_REFRESH_TOKEN = os.environ.get("YOUTUBE_REFRESH_TOKEN", "")
 
+# ─── TikTok Content Posting API ──────────────────────────────
+TIKTOK_ACCESS_TOKEN = os.environ.get("TIKTOK_ACCESS_TOKEN", "")
+
+# ─── Instagram Graph API ─────────────────────────────────────
+INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
+INSTAGRAM_ACCOUNT_ID = os.environ.get("INSTAGRAM_ACCOUNT_ID", "")
+
+# ─── Multi-platform upload targets ───────────────────────────
+# Comma-separated: "youtube", "tiktok", "instagram"
+UPLOAD_TARGETS = os.environ.get("UPLOAD_TARGETS", "youtube")
+
 
 # ══════════════════════════════════════════════════════════════
 #  TELEGRAM NOTIFICATIONS

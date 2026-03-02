@@ -14,9 +14,9 @@
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
 | 2 | Observability & Testing | ✅ Complete | 7/7 |
 | 3 | Feature Hardening | ✅ Complete | 7/7 |
-| 4 | Scale & Extensibility | ⬜ Not Started | 0/7 |
+| 4 | Scale & Extensibility | ⬜ Not Started | 0/6 |
 
-**Total: 28 tasks** — 21 completed, 7 remaining
+**Total: 27 tasks** — 21 completed, 6 remaining
 
 ---
 
@@ -255,14 +255,7 @@
 | **Target** | `src/plugins/` (directory baru) |
 | **Scope** | Hook system: `on_content_generated`, `on_video_rendered`, `on_uploaded`, `on_error`. Plugin bisa: auto-post ke Twitter/X, send ke Discord webhook, generate thumbnail, dll. Plugin discovery via `src/plugins/__init__.py`. |
 
-### 4.6 Multi-Language Narration
-
-| Item | Detail |
-| :--- | :--- |
-| **Target** | `src/tts.py`, `src/llm.py`, `src/config.py` |
-| **Scope** | Support generate konten dalam bahasa lain (Indonesia, Spanish, dll). LLM prompt disesuaikan per bahasa. TTS voice dipilih berdasarkan bahasa narration. Config: `NARRATION_LANGUAGE=en\|id\|es`. |
-
-### 4.7 Thumbnail Generation
+### 4.6 Thumbnail Generation
 
 | Item | Detail |
 | :--- | :--- |
