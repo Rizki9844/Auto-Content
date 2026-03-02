@@ -14,9 +14,9 @@
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
 | 2 | Observability & Testing | ✅ Complete | 7/7 |
 | 3 | Feature Hardening | ✅ Complete | 7/7 |
-| 4 | Scale & Extensibility | 🔄 In Progress | 3/6 |
+| 4 | Scale & Extensibility | 🔄 In Progress | 5/6 |
 
-**Total: 27 tasks** — 24 completed, 3 remaining
+**Total: 27 tasks** — 26 completed, 1 remaining
 
 ---
 
@@ -218,7 +218,7 @@
 
 > **Goal:** Skalakan pipeline ke multi-platform, tambahkan scheduling, dan buat arsitektur extensible.
 >
-> **Status:** 🔄 In Progress — 4.1 & 4.2 complete
+> **Status:** 🔄 In Progress — 4.1, 4.2, 4.3, 4.4 & 4.6 complete — 4.5 remaining
 
 ### 4.1 Multi-Platform Upload ✅
 
@@ -247,12 +247,14 @@
 | **Status** | ✅ Complete — Commit `d5319c2` (6 Maret 2026) — 288 tests passing |
 | **Usage** | `python -m src.main --analytics` (print) · `python -m src.main --analytics --save` (write to `output/`) |
 
-### 4.4 Template / Theme System
+### 4.4 Template / Theme System ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/renderer.py`, `src/config.py` |
+| **Target** | `src/theme_loader.py` (baru), `themes/*.json` (3 themes), `src/renderer.py`, `src/config.py` |
 | **Scope** | Pisahkan visual config ke theme files (`themes/github_dark.json`, `themes/monokai.json`, dll). Renderer membaca theme dari config. Bisa rotate themes secara otomatis. |
+| **Status** | ✅ Complete — Commit `afac64b` (6 Maret 2026) — 323 tests passing |
+| **Usage** | `ACTIVE_THEME=monokai` · `AUTO_ROTATE_THEMES=1` · `THEME_ROTATION_LIST=github_dark,monokai,dracula` |
 
 ### 4.5 Plugin Architecture
 
@@ -261,12 +263,14 @@
 | **Target** | `src/plugins/` (directory baru) |
 | **Scope** | Hook system: `on_content_generated`, `on_video_rendered`, `on_uploaded`, `on_error`. Plugin bisa: auto-post ke Twitter/X, send ke Discord webhook, generate thumbnail, dll. Plugin discovery via `src/plugins/__init__.py`. |
 
-### 4.6 Thumbnail Generation
+### 4.6 Thumbnail Generation ✅
 
 | Item | Detail |
 | :--- | :--- |
 | **Target** | `src/thumbnail.py` (file baru) |
 | **Scope** | Auto-generate YouTube thumbnail: (1) Code snippet preview. (2) Title text overlay. (3) Language icon. (4) Eye-catching gradient + emoji. Upload via YouTube API `thumbnails.set()`. |
+| **Status** | ✅ Complete — Commit `afac64b` (6 Maret 2026) — 323 tests passing |
+| **Usage** | `ENABLE_THUMBNAILS=1` untuk aktifkan thumbnail generation + upload otomatis |
 
 ---
 
