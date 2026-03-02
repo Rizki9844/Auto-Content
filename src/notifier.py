@@ -34,6 +34,7 @@ def send_notification(
     language: str = "",
     content_type: str = "tip",
     duration: float = 0,
+    error_class: str = "",
 ) -> bool:
     """
     Send a Telegram notification about pipeline result.
@@ -46,6 +47,7 @@ def send_notification(
         language: Programming language used
         content_type: Content type (tip, quiz, etc.)
         duration: Video duration in seconds
+        error_class: Error classification (TRANSIENT/PERMANENT/CONTENT) — Phase 3.7
 
     Returns:
         True if sent successfully, False otherwise.
@@ -58,7 +60,7 @@ def send_notification(
         if status == "success":
             message = _format_success(title, youtube_id, language, content_type, duration)
         else:
-            message = _format_failure(title, error_message)
+            message = _format_failure(title, error_message, error_class)
 
         return _send_message(message)
 
@@ -105,12 +107,31 @@ def _format_success(
     return "\n".join(lines)
 
 
-def _format_failure(title: str, error_message: str) -> str:
-    """Format a failure notification message using HTML."""
+def _format_failure(title: str, error_message: str, error_class: str = "") -> str:
+    """Format a failure notification message using HTML (with error class — Phase 3.7)."""
+    _class_emoji = {
+        "TRANSIENT": "🔄",
+        "PERMANENT": "🛑",
+        "CONTENT": "📝",
+    }
+    class_label = ""
+    if error_class:
+        emoji = _class_emoji.get(error_class, "⚠️")
+        class_label = f"\n{emoji} Kelas: <code>{error_class}</code>"
+
+        # Add actionable advice based on error class
+        advice = {
+            "TRANSIENT": "Retry otomatis akan dilakukan di run berikutnya.",
+            "PERMANENT": "Cek credentials dan quota — butuh intervensi manual.",
+            "CONTENT": "Content akan di-regenerate otomatis.",
+        }
+        class_label += f"\n💡 {advice.get(error_class, '')}"
+
     lines = [
         "❌ <b>Pipeline Gagal!</b>",
         "",
         f"📝 Topik: {_escape_html(title or '(unknown)')}",
+        class_label,
         "",
         "⚠️ Error:",
         f"<code>{_escape_html(error_message[:300])}</code>",

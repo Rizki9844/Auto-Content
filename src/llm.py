@@ -197,11 +197,14 @@ def _repair_json(raw: str) -> dict:
     raise json.JSONDecodeError("Could not repair JSON from LLM response", text, 0)
 
 
-def generate_content() -> dict:
+def generate_content(avoid_languages: list[str] | None = None) -> dict:
     """
     Generate a unique coding tip using Gemini Pro.
     Returns a dict with keys: title, script, code, language, hashtags.
     Raises RuntimeError after MAX_RETRIES failed attempts.
+
+    Args:
+        avoid_languages: List of language names to avoid (Phase 3.3 dedup).
     """
     if not config.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is not configured")
@@ -218,10 +221,20 @@ def generate_content() -> dict:
     else:
         history_text = "(None yet — this is the first video! Pick something exciting.)"
 
+    # Language balancing hint (Phase 3.3)
+    lang_hint = ""
+    if avoid_languages:
+        lang_hint = (
+            f"\n\n══ LANGUAGE BALANCING ══\n"
+            f"These languages have been used too frequently recently: "
+            f"{', '.join(avoid_languages)}.\n"
+            f"Please pick a DIFFERENT language to maintain variety."
+        )
+
     user_prompt = f"""{SYSTEM_PROMPT}
 
 ══ PREVIOUSLY GENERATED TOPICS (DO NOT REPEAT ANY) ══
-{history_text}
+{history_text}{lang_hint}
 
 Now generate a brand new, unique coding tip. Pick a DIFFERENT language and category from the ones listed above. Return valid JSON only."""
 

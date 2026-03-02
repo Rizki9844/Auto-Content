@@ -82,6 +82,56 @@ CONTENT_TYPE_LABELS = {
 }
 
 
+# ══════════════════════════════════════════════════════════════
+#  DYNAMIC FONT SCALING  (Phase 3.5)
+# ══════════════════════════════════════════════════════════════
+
+# Thresholds for triggering dynamic scaling
+_MAX_LINES_DEFAULT_FONT = 12
+_MAX_CHARS_PER_LINE_DEFAULT = 45
+_MIN_FONT_SIZE = 16
+_MAX_FONT_SIZE = 28  # never go above this
+
+
+def compute_dynamic_font_size(code: str, base_size: int = 24) -> int:
+    """
+    Compute optimal font size for code so it fits in the editor panel.
+
+    Rules:
+      - If lines > 12 or max line > 45 chars: shrink font.
+      - Minimum font: 16px.  Maximum: 28px.
+      - Scaling is continuous (not step-function).
+
+    Args:
+        code: The code snippet to render.
+        base_size: Default font size from config.
+
+    Returns:
+        Adjusted font size (int).
+    """
+    lines = code.rstrip().split("\n")
+    num_lines = len(lines)
+    max_line_len = max((len(l) for l in lines), default=0)
+
+    font_size = base_size
+
+    # Shrink for too many lines
+    if num_lines > _MAX_LINES_DEFAULT_FONT:
+        line_ratio = _MAX_LINES_DEFAULT_FONT / num_lines
+        font_size = int(font_size * line_ratio)
+
+    # Shrink for very long lines
+    if max_line_len > _MAX_CHARS_PER_LINE_DEFAULT:
+        char_ratio = _MAX_CHARS_PER_LINE_DEFAULT / max_line_len
+        candidate = int(base_size * char_ratio)
+        font_size = min(font_size, candidate)
+
+    # Clamp
+    font_size = max(_MIN_FONT_SIZE, min(_MAX_FONT_SIZE, font_size))
+
+    return font_size
+
+
 def _ease_out_cubic(t: float) -> float:
     """Cubic ease-out for smooth animations."""
     return 1 - (1 - min(max(t, 0), 1)) ** 3
@@ -179,10 +229,20 @@ class FrameRenderer:
     # ──────────────────────────────────────────────────────────
 
     def _load_fonts(self):
-        """Load font files and compute character metrics."""
-        self.code_font = ImageFont.truetype(config.FONT_REGULAR, config.CODE_FONT_SIZE)
-        self.code_font_bold = ImageFont.truetype(config.FONT_BOLD, config.CODE_FONT_SIZE)
-        self.line_num_font = ImageFont.truetype(config.FONT_REGULAR, config.LINE_NUM_FONT_SIZE)
+        """Load font files and compute character metrics.
+        Applies dynamic font scaling (Phase 3.5) when code is long.
+        """
+        # ── Dynamic font scaling (Phase 3.5) ──────────────────
+        self.code_font_size = compute_dynamic_font_size(
+            self.code, config.CODE_FONT_SIZE
+        )
+        self.line_num_font_size = max(
+            14, self.code_font_size - 4
+        )
+
+        self.code_font = ImageFont.truetype(config.FONT_REGULAR, self.code_font_size)
+        self.code_font_bold = ImageFont.truetype(config.FONT_BOLD, self.code_font_size)
+        self.line_num_font = ImageFont.truetype(config.FONT_REGULAR, self.line_num_font_size)
         self.subtitle_font = ImageFont.truetype(config.FONT_BOLD, config.SUBTITLE_FONT_SIZE)
         self.watermark_font = ImageFont.truetype(config.FONT_REGULAR, config.WATERMARK_FONT_SIZE)
         self.chrome_font = ImageFont.truetype(config.FONT_REGULAR, config.CHROME_FONT_SIZE)
@@ -199,10 +259,15 @@ class FrameRenderer:
         self.preview_char_width = preview_bbox[2] - preview_bbox[0]
         self.preview_line_height = int(config.PREVIEW_CODE_FONT_SIZE * 1.65)
 
-        # Monospace char dimensions
+        # Monospace char dimensions (using dynamically scaled size)
         bbox = self.code_font.getbbox("M")
         self.char_width = bbox[2] - bbox[0]
-        self.line_height = int(config.CODE_FONT_SIZE * 1.65)
+        self.line_height = int(self.code_font_size * 1.65)
+
+        if self.code_font_size != config.CODE_FONT_SIZE:
+            logger.info(
+                f"Dynamic font scaling: {config.CODE_FONT_SIZE} → {self.code_font_size}px"
+            )
 
     def _tokenize_code(self):
         """Tokenize code using Pygments for syntax highlighting."""

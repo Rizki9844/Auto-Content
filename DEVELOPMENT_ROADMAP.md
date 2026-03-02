@@ -13,10 +13,10 @@
 | :---: | :--- | :---: | :---: |
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
 | 2 | Observability & Testing | ✅ Complete | 7/7 |
-| 3 | Feature Hardening | ⬜ Not Started | 0/7 |
+| 3 | Feature Hardening | ✅ Complete | 7/7 |
 | 4 | Scale & Extensibility | ⬜ Not Started | 0/7 |
 
-**Total: 28 tasks** — 14 completed, 14 remaining
+**Total: 28 tasks** — 21 completed, 7 remaining
 
 ---
 
@@ -148,60 +148,69 @@
 
 ---
 
-## ⬜ Phase 3 — Feature Hardening
+## ✅ Phase 3 — Feature Hardening
 
 > **Goal:** Perkuat fitur yang sudah ada — kualitas konten, video rendering, dan error recovery.
 >
-> **Status:** Not Started
+> **Status:** ✅ Complete
+>
+> **Files changed:** `src/errors.py` (new), `src/quality.py` (new), `src/rate_limiter.py` (new), `src/main.py`, `src/renderer.py`, `src/video.py`, `src/db.py`, `src/llm.py`, `src/notifier.py`, `tests/test_phase3.py` (new), `tests/test_integration.py`
+>
+> **Tests:** 200 total (64 new Phase 3 tests)
 
-### 3.1 Content Quality Scoring
-
-| Item | Detail |
-| :--- | :--- |
-| **Target** | `src/llm.py` |
-| **Scope** | Setelah content generation, hitung quality score berdasarkan: (1) Script word count dalam range ideal (40-60). (2) Code line count dalam range (3-15). (3) Hashtag count (5-8). (4) Content type diversity (bonus jika berbeda dari 5 terakhir). Jika score < threshold → regenerate (max 2 extra attempts). |
-
-### 3.2 Video Quality Verification
+### 3.1 Content Quality Scoring ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/video.py` |
-| **Scope** | Setelah video render: (1) Cek file size > 100KB dan < 50MB. (2) Cek duration antara 15-60 detik. (3) Verify video codec dengan `ffprobe`. Jika gagal → abort upload, save error to MongoDB. |
+| **File** | `src/quality.py` (new module) |
+| **Scope** | `score_content()` returns 0–100 score across 5 dimensions: script word count (25pts), code line count (25pts), hashtag count (15pts), code quality heuristics (20pts — indentation, avg line length, placeholder detection, comments), diversity bonus (15pts). `QUALITY_THRESHOLD = 50`. Pipeline regenerates content up to 2 extra attempts if score < threshold. |
+| **Integration** | `src/main.py` calls `score_content()` after generation, logs score breakdown, regenerates if below threshold. |
 
-### 3.3 Smarter Content Deduplication
-
-| Item | Detail |
-| :--- | :--- |
-| **Target** | `src/db.py`, `src/llm.py` |
-| **Scope** | Selain title matching, tambahkan: (1) Code similarity check (normalize whitespace, compare). (2) Language + category frequency balancing — jika Python sudah 5× berturut-turut, paksa pilih bahasa lain. |
-
-### 3.4 Graceful Degradation
+### 3.2 Video Quality Verification ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/main.py` |
-| **Scope** | Jika YouTube upload gagal setelah semua retry: (1) Simpan video file sebagai artifact. (2) Set status = "rendered_not_uploaded". (3) Next run bisa mencoba re-upload video yang tertunda. |
+| **File** | `src/video.py` — `verify_video()` function |
+| **Scope** | Post-render verification: (1) File existence. (2) Size 100KB–50MB. (3) Duration 5s–61s via `ffprobe`. (4) Codec check (`h264`). Graceful degradation if `ffprobe` unavailable — skips duration/codec checks with warnings. Returns dict with `passed`, `file_size`, `duration`, `codec`, `warnings`, `errors`. |
+| **Integration** | `src/main.py` aborts upload and saves error to MongoDB if verification fails. |
 
-### 3.5 Dynamic Font Scaling
-
-| Item | Detail |
-| :--- | :--- |
-| **Target** | `src/renderer.py` |
-| **Scope** | Jika kode > 12 baris atau ada baris > 45 karakter: otomatis kurangi font size agar tidak terpotong. Hitung optimal `CODE_FONT_SIZE` berdasarkan konten. |
-
-### 3.6 Rate Limiting Awareness
+### 3.3 Smarter Content Deduplication ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/llm.py`, `src/uploader_youtube.py` |
-| **Scope** | Parse Gemini API rate limit headers. Jika mendekati limit → add extra delay. YouTube: check quota usage sebelum upload (YouTube Data API quota = 10.000 units/hari, upload = 1.600 units). |
+| **Files** | `src/db.py` — `_normalize_code()`, `check_code_similarity()`, `get_language_frequency()` |
+| **Scope** | (1) Code similarity: normalize (strip comments/whitespace) + Jaccard similarity on token trigrams (>70% = duplicate). (2) Language frequency: query last 20 records, detect overused languages (>40%), suggest `avoid_languages` list. (3) Content type frequency: detect overused types, suggest recent types. |
+| **Integration** | `src/llm.py` accepts `avoid_languages` param and adds balancing hint to prompt. `src/main.py` checks similarity post-generation, passes `avoid_languages` from frequency analysis. |
 
-### 3.7 Improved Error Classification
+### 3.4 Graceful Degradation ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/main.py`, `src/notifier.py` |
-| **Scope** | Classify errors: (1) `TRANSIENT` — API timeout, network error → worth retrying. (2) `PERMANENT` — invalid credentials, quota exceeded → jangan retry, kirim alert berbeda. (3) `CONTENT` — safety filter, validation → regenerate content. Telegram notification menyertakan error class. |
+| **Files** | `src/db.py` — `save_pending_upload()`, `get_pending_uploads()`, `mark_upload_complete()`, `increment_retry_count()`. `src/main.py` — `_retry_pending_uploads()` |
+| **Scope** | If YouTube upload fails: (1) Save video path + metadata to `pending_uploads` collection. (2) Set status = `"rendered_not_uploaded"`. (3) Next pipeline run calls `_retry_pending_uploads()` — attempts re-upload of pending items (max 3 retries each). (4) Successful retry marks upload complete and updates original record. |
+
+### 3.5 Dynamic Font Scaling ✅
+
+| Item | Detail |
+| :--- | :--- |
+| **File** | `src/renderer.py` — `compute_dynamic_font_size()` |
+| **Scope** | If code > 12 lines or any line > 45 chars: reduce font size proportionally. Min 16px, max 28px (default). Two scaling factors computed (line count based, char width based), strictest wins. `_load_fonts()` uses dynamic size and logs scaling changes. |
+
+### 3.6 Rate Limiting Awareness ✅
+
+| Item | Detail |
+| :--- | :--- |
+| **File** | `src/rate_limiter.py` (new module) — `RateLimiter` class |
+| **Scope** | (1) Gemini RPM tracking: `pre_gemini_call()` returns delay seconds if approaching limit (15 RPM default). Parses `X-RateLimit-*` headers when available. (2) YouTube quota tracking: `check_youtube_quota()` verifies upload feasibility (10,000 units/day, 1,600/upload). Auto-resets at midnight UTC. |
+| **Integration** | `src/main.py` creates `RateLimiter` instance, calls `pre_gemini_call()` before generation, `check_youtube_quota()` before upload. |
+
+### 3.7 Improved Error Classification ✅
+
+| Item | Detail |
+| :--- | :--- |
+| **File** | `src/errors.py` (new module) |
+| **Scope** | `PipelineError` hierarchy: `TransientError` (API timeout, network), `PermanentError` (invalid creds, quota exceeded), `ContentError` (safety, validation). `classify_error()` uses regex patterns (13 transient, 9 permanent, 9 content patterns) to classify arbitrary exceptions. `is_retryable()` quick check. |
+| **Integration** | `src/main.py` exception handler classifies errors, saves `error_class` to MongoDB record. `src/notifier.py` shows error class emoji + actionable advice per class in Telegram notifications. |
 
 ---
 
