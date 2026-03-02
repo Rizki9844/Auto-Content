@@ -54,42 +54,52 @@ SUBTITLE_TEXT_COLOR = "#ffffff"
 SUBTITLE_ACTIVE_COLOR = "#ffd700"
 SUBTITLE_BG_COLOR = "#010409"
 WATERMARK_COLOR = "#484f58"
+PREVIEW_RUNNING_COLOR = "#58a6ff"     # spinner + "Running..." text
 
 
 # ══════════════════════════════════════════════════════════════
-#  LAYOUT (pixel coordinates for 1080×1920 canvas)
+#  SPLIT-SCREEN LAYOUT (1080×1920 canvas)
 # ══════════════════════════════════════════════════════════════
 PADDING = 50
 
-# Window chrome (title bar)
-CHROME_Y = 100
-CHROME_H = 48
+# ── Preview panel (top) — output / demo / concept ────────────
+PREVIEW_Y = 50
+PREVIEW_CHROME_H = 40
+PREVIEW_CONTENT_Y = PREVIEW_Y + PREVIEW_CHROME_H + 15   # 105
+PREVIEW_CODE_TOP = PREVIEW_Y + PREVIEW_CHROME_H + 25    # 115
+PREVIEW_BOTTOM = 680
 
-# Code editor area
-CODE_TOP = CHROME_Y + CHROME_H + 25        # 173
-CODE_LEFT = PADDING + 72                    # 122  (after line-number gutter)
-LINE_NUM_RIGHT_X = PADDING + 52             # 102  (right-align anchor)
-GUTTER_X = PADDING + 62                     # 112  (vertical gutter separator)
+# ── Gradient divider ─────────────────────────────────────────
+DIVIDER_Y = 700
 
-# Subtitles & watermark
-SUBTITLE_Y = 1500
-WATERMARK_Y = 1820
+# ── Code editor panel (bottom) — typing animation ────────────
+CHROME_Y = 730
+CHROME_H = 44
+CODE_TOP = CHROME_Y + CHROME_H + 25        # 799
+CODE_LEFT = PADDING + 72                    # 122
+LINE_NUM_RIGHT_X = PADDING + 52             # 102
+GUTTER_X = PADDING + 62                     # 112
+
+# ── Subtitles & watermark ────────────────────────────────────
+SUBTITLE_Y = 1520
+WATERMARK_Y = 1840
 
 
 # ══════════════════════════════════════════════════════════════
 #  FONT SIZES
 # ══════════════════════════════════════════════════════════════
-CODE_FONT_SIZE = 28
-LINE_NUM_FONT_SIZE = 22
-SUBTITLE_FONT_SIZE = 44
-WATERMARK_FONT_SIZE = 22
-CHROME_FONT_SIZE = 16
-TITLE_FONT_SIZE = 52
-TITLE_SUB_FONT_SIZE = 30
-OUTPUT_FONT_SIZE = 24
+CODE_FONT_SIZE = 24
+LINE_NUM_FONT_SIZE = 20
+SUBTITLE_FONT_SIZE = 42
+WATERMARK_FONT_SIZE = 20
+CHROME_FONT_SIZE = 15
+TITLE_FONT_SIZE = 48
+TITLE_SUB_FONT_SIZE = 28
+OUTPUT_FONT_SIZE = 22
 OUTRO_FONT_SIZE = 40
 OUTRO_SUB_FONT_SIZE = 28
-
+PREVIEW_CODE_FONT_SIZE = 22
+PREVIEW_LINE_NUM_SIZE = 18
 
 # ══════════════════════════════════════════════════════════════
 #  ANIMATION TIMING
@@ -134,7 +144,7 @@ CONTENT_TYPES = ["tip", "output_demo", "quiz", "before_after"]
 # ══════════════════════════════════════════════════════════════
 #  TTS  (Microsoft Edge Neural Voices via edge-tts)
 # ══════════════════════════════════════════════════════════════
-TTS_VOICE = os.environ.get("TTS_VOICE", "en-US-GuyNeural")
+TTS_VOICE = os.environ.get("TTS_VOICE", "en-US-ChristopherNeural")
 TTS_RATE = os.environ.get("TTS_RATE", "+10%")  # speed up to compress pauses
 
 

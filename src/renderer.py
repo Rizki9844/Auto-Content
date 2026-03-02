@@ -192,6 +192,13 @@ class FrameRenderer:
         self.outro_font = ImageFont.truetype(config.FONT_BOLD, config.OUTRO_FONT_SIZE)
         self.outro_sub_font = ImageFont.truetype(config.FONT_REGULAR, config.OUTRO_SUB_FONT_SIZE)
 
+        # Preview panel fonts (slightly smaller for top half)
+        self.preview_code_font = ImageFont.truetype(config.FONT_REGULAR, config.PREVIEW_CODE_FONT_SIZE)
+        self.preview_line_num_font = ImageFont.truetype(config.FONT_REGULAR, config.PREVIEW_LINE_NUM_SIZE)
+        preview_bbox = self.preview_code_font.getbbox("M")
+        self.preview_char_width = preview_bbox[2] - preview_bbox[0]
+        self.preview_line_height = int(config.PREVIEW_CODE_FONT_SIZE * 1.65)
+
         # Monospace char dimensions
         bbox = self.code_font.getbbox("M")
         self.char_width = bbox[2] - bbox[0]
@@ -260,6 +267,26 @@ class FrameRenderer:
                         bx += self.char_width
             self.before_total_chars = len(self.before_char_data)
 
+            # Preview-positioned before_char_data (for top panel)
+            self.preview_before_data = []
+            px = config.PADDING + 72
+            py = config.PREVIEW_CODE_TOP
+            self.preview_before_lines = 1
+            for token_type, token_text in self.before_tokens:
+                color = self._resolve_color(token_type)
+                for ch in token_text:
+                    if ch == "\n":
+                        px = config.PADDING + 72
+                        py += self.preview_line_height
+                        self.preview_before_lines += 1
+                    elif ch == "\t":
+                        for _ in range(4):
+                            self.preview_before_data.append((" ", px, py, color))
+                            px += self.preview_char_width
+                    else:
+                        self.preview_before_data.append((ch, px, py, color))
+                        px += self.preview_char_width
+
     def _resolve_color(self, token_type) -> str:
         tt = token_type
         while tt:
@@ -282,23 +309,103 @@ class FrameRenderer:
         return Image.fromarray(arr, "RGB")
 
     def _create_base_image(self):
-        """Build the static code editor base image."""
+        """Build the static split-screen base image with preview + code panels."""
         self.base = self._gradient_bg.copy()
         draw = ImageDraw.Draw(self.base)
 
-        # Code panel bg
-        panel_bottom = config.CODE_TOP + (max(self.total_lines, 6) * self.line_height) + 40
-        self._panel_bottom = panel_bottom
+        # ══ TOP: Preview Panel ════════════════════════════════
         draw.rounded_rectangle(
-            [config.PADDING, config.CHROME_Y, self.width - config.PADDING, panel_bottom],
+            [config.PADDING, config.PREVIEW_Y,
+             self.width - config.PADDING, config.PREVIEW_BOTTOM],
             radius=12, fill=config.CODE_BG,
         )
 
-        # Chrome title bar
+        # Preview chrome bar
+        pch_bottom = config.PREVIEW_Y + config.PREVIEW_CHROME_H
+        draw.rounded_rectangle(
+            [config.PADDING, config.PREVIEW_Y,
+             self.width - config.PADDING, config.PREVIEW_Y + 20],
+            radius=12, fill=config.CHROME_BG,
+        )
+        draw.rectangle(
+            [config.PADDING, config.PREVIEW_Y + 12,
+             self.width - config.PADDING, pch_bottom],
+            fill=config.CHROME_BG,
+        )
+
+        # Preview traffic lights
+        dot_cy = config.PREVIEW_Y + config.PREVIEW_CHROME_H // 2
+        dot_start_x = config.PADDING + 28
+        for i, color in enumerate(config.CHROME_DOT_COLORS):
+            cx = dot_start_x + i * 22
+            draw.ellipse([cx - 5, dot_cy - 5, cx + 5, dot_cy + 5], fill=color)
+
+        # Preview panel label
+        _preview_labels = {
+            "output_demo": "▶ Output",
+            "quiz": "🧠 Challenge",
+            "before_after": "❌ Before",
+            "tip": "💡 Concept",
+        }
+        plabel = _preview_labels.get(self.content_type, "▶ Preview")
+        draw.text(
+            (self.width // 2, dot_cy), plabel,
+            fill="#8b949e", font=self.chrome_font, anchor="mm",
+        )
+
+        # Preview separator line
+        draw.line(
+            [(config.PADDING, pch_bottom),
+             (self.width - config.PADDING, pch_bottom)],
+            fill=config.SEPARATOR, width=1,
+        )
+
+        # Before/after: draw "before" code + line numbers into preview (static)
+        if self.content_type == "before_after" and self.code_before:
+            for i in range(getattr(self, 'preview_before_lines', 0)):
+                ln_y = config.PREVIEW_CODE_TOP + i * self.preview_line_height
+                if ln_y < config.PREVIEW_BOTTOM - 20:
+                    draw.text(
+                        (config.PADDING + 52, ln_y), str(i + 1),
+                        fill=config.LINE_NUM_COLOR, font=self.preview_line_num_font,
+                        anchor="ra",
+                    )
+            # Gutter
+            g_top = config.PREVIEW_CODE_TOP - 5
+            g_bot = min(
+                config.PREVIEW_CODE_TOP + getattr(self, 'preview_before_lines', 1) * self.preview_line_height + 5,
+                config.PREVIEW_BOTTOM - 10,
+            )
+            draw.line(
+                [(config.PADDING + 62, g_top), (config.PADDING + 62, g_bot)],
+                fill=config.SEPARATOR, width=1,
+            )
+            for ch, x, y, color in getattr(self, 'preview_before_data', []):
+                if ch.strip() and y < config.PREVIEW_BOTTOM - 20:
+                    draw.text((x, y), ch, fill=color, font=self.preview_code_font)
+
+        # ══ GRADIENT DIVIDER ══════════════════════════════════
+        left_rgb = _hex_to_rgb(config.ACCENT_GRADIENT_LEFT)
+        right_rgb = _hex_to_rgb(config.ACCENT_GRADIENT_RIGHT)
+        for x in range(config.PADDING, self.width - config.PADDING):
+            t = (x - config.PADDING) / max(self.width - 2 * config.PADDING, 1)
+            c = _lerp_color(left_rgb, right_rgb, t)
+            draw.line([(x, config.DIVIDER_Y), (x, config.DIVIDER_Y + 3)], fill=c)
+
+        # ══ BOTTOM: Code Editor Panel ═════════════════════════
+        panel_bottom = config.CODE_TOP + (max(self.total_lines, 5) * self.line_height) + 40
+        self._panel_bottom = panel_bottom
+        draw.rounded_rectangle(
+            [config.PADDING, config.CHROME_Y,
+             self.width - config.PADDING, panel_bottom],
+            radius=12, fill=config.CODE_BG,
+        )
+
+        # Code chrome bar
         chrome_bottom = config.CHROME_Y + config.CHROME_H
         draw.rounded_rectangle(
             [config.PADDING, config.CHROME_Y,
-             self.width - config.PADDING, config.CHROME_Y + 24],
+             self.width - config.PADDING, config.CHROME_Y + 22],
             radius=12, fill=config.CHROME_BG,
         )
         draw.rectangle(
@@ -307,24 +414,26 @@ class FrameRenderer:
             fill=config.CHROME_BG,
         )
 
-        # Traffic lights
-        dot_cy = config.CHROME_Y + config.CHROME_H // 2
-        dot_start_x = config.PADDING + 28
+        # Code traffic lights
+        dot_cy2 = config.CHROME_Y + config.CHROME_H // 2
         for i, color in enumerate(config.CHROME_DOT_COLORS):
-            cx = dot_start_x + i * 25
-            draw.ellipse([cx - 7, dot_cy - 7, cx + 7, dot_cy + 7], fill=color)
+            cx = dot_start_x + i * 22
+            draw.ellipse([cx - 5, dot_cy2 - 5, cx + 5, dot_cy2 + 5], fill=color)
 
         # Filename
         ext = EXT_MAP.get(self.language, ".txt")
         filename = f"main{ext}"
+        if self.content_type == "before_after":
+            filename = f"✅ main{ext}  (AFTER)"
         draw.text(
-            (self.width // 2, dot_cy), filename,
+            (self.width // 2, dot_cy2), filename,
             fill="#8b949e", font=self.chrome_font, anchor="mm",
         )
 
         # Separator
         draw.line(
-            [(config.PADDING, chrome_bottom), (self.width - config.PADDING, chrome_bottom)],
+            [(config.PADDING, chrome_bottom),
+             (self.width - config.PADDING, chrome_bottom)],
             fill=config.SEPARATOR, width=1,
         )
 
@@ -349,22 +458,6 @@ class FrameRenderer:
             (self.width - config.PADDING - 10, config.WATERMARK_Y),
             self.channel_name,
             fill=config.WATERMARK_COLOR, font=self.watermark_font, anchor="ra",
-        )
-
-        # Content type badge (top-left, above code panel)
-        badge_text = CONTENT_TYPE_LABELS.get(self.content_type, "💡 TIP")
-        badge_bbox = self.chrome_font.getbbox(badge_text)
-        badge_w = badge_bbox[2] - badge_bbox[0] + 24
-        badge_h = badge_bbox[3] - badge_bbox[1] + 12
-        badge_x = config.PADDING
-        badge_y = config.CHROME_Y - badge_h - 10
-        draw.rounded_rectangle(
-            [badge_x, badge_y, badge_x + badge_w, badge_y + badge_h],
-            radius=6, fill="#58a6ff",
-        )
-        draw.text(
-            (badge_x + 12, badge_y + 6), badge_text,
-            fill="#ffffff", font=self.chrome_font,
         )
 
     def _create_intro_image(self):
@@ -498,17 +591,14 @@ class FrameRenderer:
         )
 
     def _prepare_output_panel(self):
-        """Pre-render the output panel data."""
+        """Pre-compute output panel data and reveal timing."""
         if not self.code_output:
             return
 
-        self.output_top = self._panel_bottom + 20
         output_line_h = int(config.OUTPUT_FONT_SIZE * 1.5)
         output_lines = self.code_output.strip().split("\n")
-        self.output_lines = output_lines[:10]
+        self.output_lines = output_lines[:12]
         self.output_line_height = output_line_h
-        self.output_panel_height = len(self.output_lines) * output_line_h + 60
-        self.output_bottom = self.output_top + self.output_panel_height
 
         # Output appears after typing finishes
         natural_typing = self.total_chars / config.TYPING_CPS
@@ -599,15 +689,14 @@ class FrameRenderer:
         return np.array(frame)
 
     def _render_code_phase(self, t: float) -> np.ndarray:
-        """Render the main code editor phase."""
+        """Render split-screen: preview (top) + code editor (bottom)."""
         frame = self.base.copy()
         draw = ImageDraw.Draw(frame)
 
-        # Before/after: show both phases
-        if self.content_type == "before_after" and self.code_before:
-            return self._render_before_after(t, frame, draw)
+        # ── Top panel: dynamic preview content ────────────
+        self._draw_preview_content(draw, t)
 
-        # Normal typing
+        # ── Bottom panel: code typing animation ───────────
         n_chars = self._get_visible_chars(t)
 
         # Current line highlight
@@ -620,132 +709,153 @@ class FrameRenderer:
                 fill=config.LINE_HIGHLIGHT,
             )
 
-        # Draw code characters
+        # Draw visible code characters
         for i in range(n_chars):
             ch, x, y, color = self.char_data[i]
             if ch.strip():
                 draw.text((x, y), ch, fill=color, font=self.code_font)
 
-        # Cursor
+        # Blinking cursor
         self._draw_cursor(draw, t, n_chars)
 
-        # Output panel
-        if self.code_output and hasattr(self, 'output_reveal_time'):
-            self._draw_output_panel(draw, t)
-
-        # Subtitles
+        # Karaoke subtitles
         self._draw_subtitles(draw, t)
 
         return np.array(frame)
 
-    def _render_before_after(
-        self, t: float, frame: Image.Image, draw: ImageDraw.ImageDraw
-    ) -> np.ndarray:
-        """Render before/after — old code first half, new code second half."""
-        code_duration = self.code_end - self.code_start
-        midpoint = self.code_start + code_duration * 0.45
+    # ──────────────────────────────────────────────────────────
+    #  PREVIEW PANEL RENDERING (top half)
+    # ──────────────────────────────────────────────────────────
 
-        if t < midpoint:
-            # BEFORE phase
-            self._draw_phase_badge(draw, "❌ BEFORE", "#ff7b72")
-            n = self._get_visible_chars_custom(
-                t, self.code_start, midpoint - 0.5,
-                getattr(self, 'before_total_chars', 0),
+    def _draw_preview_content(self, draw: ImageDraw.ImageDraw, t: float):
+        """Draw dynamic content in the top preview panel."""
+        if self.content_type == "output_demo":
+            self._draw_preview_output(draw, t)
+        elif self.content_type == "quiz":
+            self._draw_preview_quiz(draw, t)
+        elif self.content_type == "before_after":
+            pass  # before code is pre-drawn into base image
+        else:  # tip
+            self._draw_preview_tip(draw, t)
+
+    def _draw_preview_tip(self, draw: ImageDraw.ImageDraw, t: float):
+        """Draw styled concept card in the preview panel for 'tip' type."""
+        cx = self.width // 2
+        top = config.PREVIEW_CONTENT_Y
+
+        # Large emoji
+        draw.text(
+            (cx, top + 100), "\U0001f4a1",
+            fill="#ffd700", font=self.title_font, anchor="mm",
+        )
+
+        # Title text (word-wrapped)
+        title = self.title.replace(" #Shorts", "").replace(" #shorts", "").strip()
+        if title:
+            self._draw_wrapped_text(
+                draw, title, self.title_sub_font,
+                "#e6edf3", top + 250, max_width=self.width - 200,
             )
-            for i in range(min(n, len(getattr(self, 'before_char_data', [])))):
-                ch, x, y, color = self.before_char_data[i]
-                if ch.strip():
-                    draw.text((x, y), ch, fill=color, font=self.code_font)
-        else:
-            # Transition flash
-            tr = min((t - midpoint) / 0.3, 1.0)
-            if tr < 0.5:
-                overlay = Image.new("RGB", (self.width, self.height), "#58a6ff")
-                frame = Image.blend(frame, overlay, (1.0 - tr * 2) * 0.3)
-                draw = ImageDraw.Draw(frame)
 
-            # AFTER phase
-            self._draw_phase_badge(draw, "✅ AFTER", "#7ee787")
-            n = self._get_visible_chars_custom(
-                t, midpoint + 0.3, self.code_end - 0.5, self.total_chars,
-            )
-            for i in range(n):
-                ch, x, y, color = self.char_data[i]
-                if ch.strip():
-                    draw.text((x, y), ch, fill=color, font=self.code_font)
-
-        self._draw_subtitles(draw, t)
-        return np.array(frame)
-
-    def _draw_phase_badge(self, draw: ImageDraw.ImageDraw, text: str, color: str):
-        """Draw BEFORE/AFTER badge above code panel."""
-        badge_x = self.width - config.PADDING - 160
-        badge_y = config.CHROME_Y - 32
+        # Language badge
+        lang = self.language.upper()
+        badge_text = f"  {lang}  "
+        bbox = self.chrome_font.getbbox(badge_text)
+        bw = bbox[2] - bbox[0] + 16
+        bh = bbox[3] - bbox[1] + 10
+        bx = cx - bw // 2
+        by = top + 370
         draw.rounded_rectangle(
-            [badge_x, badge_y, badge_x + 150, badge_y + 26],
-            radius=6, fill=color,
+            [bx, by, bx + bw, by + bh],
+            radius=10, fill="#30363d",
         )
         draw.text(
-            (badge_x + 75, badge_y + 13), text,
-            fill="#0d1117", font=self.chrome_font, anchor="mm",
+            (cx, by + bh // 2), badge_text,
+            fill="#58a6ff", font=self.chrome_font, anchor="mm",
         )
 
-    def _draw_output_panel(self, draw: ImageDraw.ImageDraw, t: float):
-        """Draw terminal-style output panel below code."""
-        if t < self.output_reveal_time:
+    def _draw_preview_output(self, draw: ImageDraw.ImageDraw, t: float):
+        """Terminal-style output in preview panel with spinner then line-by-line reveal."""
+        if not self.code_output:
             return
 
-        reveal_progress = min(
-            (t - self.output_reveal_time) / config.OUTPUT_REVEAL_DURATION, 1.0
-        )
-        alpha = _ease_out_cubic(reveal_progress)
-        visible_height = int(self.output_panel_height * alpha)
-        if visible_height < 10:
+        content_y = config.PREVIEW_CONTENT_Y + 20
+
+        if t < getattr(self, 'output_reveal_time', float('inf')):
+            # Spinner animation: "Running..."
+            spinner = "\u28cb\u2819\u2839\u2838\u283c\u2834\u2826\u2827\u2807\u280f"
+            idx = int(t * 10) % len(spinner)
+            draw.text(
+                (config.PADDING + 30, content_y),
+                f"  {spinner[idx]}  Running...",
+                fill=config.PREVIEW_RUNNING_COLOR, font=self.output_font,
+            )
             return
 
-        # Header
-        header_h = 30
-        draw.rounded_rectangle(
-            [config.PADDING, self.output_top,
-             self.width - config.PADDING, self.output_top + header_h],
-            radius=8, fill=config.OUTPUT_HEADER_BG,
-        )
-        header_label = "▶ Output" if self.content_type != "quiz" else "🧠 Answer"
-        draw.text(
-            (config.PADDING + 20, self.output_top + 8),
-            header_label, fill="#8b949e", font=self.chrome_font,
+        # Line-by-line reveal after typing finishes
+        elapsed = t - self.output_reveal_time
+        lines_per_sec = 4
+        visible_count = min(
+            int(elapsed * lines_per_sec) + 1,
+            len(getattr(self, 'output_lines', [])),
         )
 
-        # Body
-        body_top = self.output_top + header_h
-        draw.rectangle(
-            [config.PADDING, body_top,
-             self.width - config.PADDING,
-             min(body_top + visible_height, self.output_bottom)],
-            fill=config.OUTPUT_BG,
-        )
-
-        # Lines
-        total = len(self.output_lines)
-        visible = max(1, int(total * alpha))
-
-        for i in range(visible):
-            line_y = body_top + 15 + i * self.output_line_height
-            if line_y > self.output_bottom - 10:
+        for i in range(visible_count):
+            line_y = content_y + i * self.output_line_height
+            if line_y > config.PREVIEW_BOTTOM - 30:
                 break
+            prompt = "\u276f " if i == 0 else "  "
             draw.text(
-                (config.PADDING + 20, line_y),
-                "❯ " if i == 0 else "  ",
-                fill=config.OUTPUT_PROMPT_COLOR, font=self.output_font,
+                (config.PADDING + 30, line_y),
+                prompt, fill=config.OUTPUT_PROMPT_COLOR, font=self.output_font,
             )
-            text_color = config.OUTPUT_TEXT_COLOR
-            if self.content_type == "quiz":
-                text_color = config.OUTRO_CTA_COLOR
             draw.text(
-                (config.PADDING + 55, line_y),
+                (config.PADDING + 65, line_y),
                 self.output_lines[i],
-                fill=text_color, font=self.output_font,
+                fill=config.OUTPUT_TEXT_COLOR, font=self.output_font,
             )
+
+    def _draw_preview_quiz(self, draw: ImageDraw.ImageDraw, t: float):
+        """Quiz challenge/answer in preview panel."""
+        cx = self.width // 2
+        top = config.PREVIEW_CONTENT_Y
+
+        if t < getattr(self, 'output_reveal_time', float('inf')):
+            # Pulsing challenge question
+            draw.text(
+                (cx, top + 100),
+                "What does this",
+                fill="#e6edf3", font=self.title_sub_font, anchor="mm",
+            )
+            draw.text(
+                (cx, top + 150),
+                "code output?",
+                fill="#e6edf3", font=self.title_sub_font, anchor="mm",
+            )
+            # Animated pulsing "?"
+            pulse = 1.0 + 0.15 * math.sin(t * 5)
+            q_size = int(config.TITLE_FONT_SIZE * pulse)
+            q_font = ImageFont.truetype(config.FONT_BOLD, min(q_size, 80))
+            draw.text(
+                (cx, top + 300), "?",
+                fill="#58a6ff", font=q_font, anchor="mm",
+            )
+        else:
+            # Reveal answer
+            draw.text(
+                (cx, top + 60),
+                "\u2705 Answer:",
+                fill="#7ee787", font=self.title_sub_font, anchor="mm",
+            )
+            content_y = top + 120
+            for i, line in enumerate(getattr(self, 'output_lines', [])):
+                line_y = content_y + i * getattr(self, 'output_line_height', 36)
+                if line_y > config.PREVIEW_BOTTOM - 30:
+                    break
+                draw.text(
+                    (config.PADDING + 30, line_y),
+                    line, fill=config.OUTRO_CTA_COLOR, font=self.output_font,
+                )
 
     def _get_visible_chars(self, t: float) -> int:
         """Visible chars at time t during main code phase."""
