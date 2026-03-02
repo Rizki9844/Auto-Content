@@ -18,6 +18,10 @@ Usage:
     ACTIVE_THEME=monokai              # use a different color theme
     AUTO_ROTATE_THEMES=1              # rotate themes daily
     ENABLE_THUMBNAILS=1               # generate + upload YouTube thumbnails
+
+    Plugin system (Phase 4.5):
+    PLUGINS=my_pkg.social             # comma-separated custom plugin modules
+    DISCORD_WEBHOOK_URL=https://...   # enable Discord notifications
 """
 import json as _json
 import os
@@ -26,6 +30,14 @@ import logging
 import re
 import time
 from datetime import datetime, timezone
+
+# ── Plugin system (Phase 4.5) ─────────────────────────────────
+try:
+    from src.plugins import registry as _plugin_registry, init_plugins
+    init_plugins()
+except Exception as _pe:
+    logging.getLogger(__name__).debug("Plugin system unavailable: %s", _pe)
+    _plugin_registry = None  # type: ignore[assignment]
 
 
 # ── Credential-safe logging filter ────────────────────────────
@@ -283,6 +295,16 @@ def main():
             )
             metrics["code_similarity"] = sim_result["max_similarity"]
 
+        # ── Plugin hook: content generated ─────────────────
+        if _plugin_registry:
+            _plugin_registry.fire(
+                "on_content_generated",
+                title=content["title"],
+                language=content["language"],
+                content_type=content.get("content_type", "tip"),
+                quality_score=metrics.get("quality_score"),
+            )
+
         # ╔════════════════════════════════════════════════════╗
         # ║  STEP 1b — Run Code (for output_demo/quiz)        ║
         # ╚════════════════════════════════════════════════════╝
@@ -331,6 +353,16 @@ def main():
             record["duration_seconds"] = 0
 
         logger.info(f"  ✓ Video: {video_path}")
+
+        # ── Plugin hook: video rendered ─────────────────────
+        if _plugin_registry:
+            _plugin_registry.fire(
+                "on_video_rendered",
+                video_path=str(video_path),
+                title=content["title"],
+                language=content["language"],
+                duration=record.get("duration_seconds", 0),
+            )
 
         # ╔════════════════════════════════════════════════════╗
         # ║  STEP 3b — Video Quality Verification (3.2)       ║
@@ -390,6 +422,16 @@ def main():
                 if result.success:
                     upload_results[result.platform] = result.video_id
                     logger.info(f"  ✓ {result.platform}: {result.url}")
+                    # ── Plugin hook: per-platform upload ───
+                    if _plugin_registry:
+                        _plugin_registry.fire(
+                            "on_uploaded",
+                            platform=result.platform,
+                            video_id=result.video_id,
+                            url=result.url,
+                            title=content["title"],
+                            language=content["language"],
+                        )
                     if result.platform == "youtube":
                         rate_limiter.record_youtube_upload()
                         # Thumbnail (Phase 4.6)
@@ -451,6 +493,19 @@ def main():
         logger.info(f"  📊 Quality: {metrics.get('quality_score', '?')}/100")
         logger.info("=" * 55)
 
+        # ── Plugin hook: pipeline complete ──────────────────
+        if _plugin_registry:
+            _plugin_registry.fire(
+                "on_pipeline_complete",
+                title=content["title"],
+                language=content["language"],
+                content_type=content.get("content_type", "tip"),
+                youtube_id=youtube_id,
+                upload_results=upload_results,
+                metrics=metrics,
+                doc_id=str(doc_id) if doc_id else None,
+            )
+
         # ── Telegram notification ─────────────────────────────
         send_notification(
             status="success",
@@ -481,6 +536,18 @@ def main():
             logger.info("Failure record saved to MongoDB")
         except Exception as db_err:
             logger.error(f"Could not save failure record: {db_err}")
+
+        # ── Plugin hook: error ─────────────────────────────
+        if _plugin_registry:
+            try:
+                _plugin_registry.fire(
+                    "on_error",
+                    error=str(e)[:500],
+                    error_class=classified.error_class,
+                    title=record.get("title", ""),
+                )
+            except Exception:
+                pass
 
         # ── Telegram failure notification with error class ────
         try:

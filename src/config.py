@@ -195,6 +195,16 @@ ENABLE_THUMBNAILS = os.environ.get("ENABLE_THUMBNAILS", "0")
 
 
 # ══════════════════════════════════════════════════════════════
+#  PLUGIN SYSTEM  (Phase 4.5)
+# ══════════════════════════════════════════════════════════════
+# Comma-separated dotted module paths for custom plugins
+# Example: PLUGINS=mypackage.social,mypackage.analytics
+PLUGINS = os.environ.get("PLUGINS", "")
+# Discord webhook URL for built-in Discord plugin
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+
+
+# ══════════════════════════════════════════════════════════════
 #  TELEGRAM NOTIFICATIONS
 # ══════════════════════════════════════════════════════════════
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")

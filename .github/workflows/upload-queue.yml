@@ -42,6 +42,8 @@ jobs:
       ACTIVE_THEME: ${{ vars.ACTIVE_THEME || 'github_dark' }}
       AUTO_ROTATE_THEMES: ${{ vars.AUTO_ROTATE_THEMES || '0' }}
       ENABLE_THUMBNAILS: ${{ vars.ENABLE_THUMBNAILS || '0' }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      PLUGINS: ${{ vars.PLUGINS || '' }}
 
     steps:
       - name: Checkout repository
