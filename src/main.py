@@ -78,16 +78,20 @@ logger = logging.getLogger("pipeline")
 
 
 # ── Content safety filter ──────────────────────────────────────
+# NOTE: single generic words (kill, bomb, exploit, weapon) are intentionally
+# excluded — they are common programming terms:
+#   kill -9, time-bomb pattern, exploit a bug, weapon class in game dev, etc.
+# Only use multi-word phrases or words that NEVER appear in legit coding content.
 _BLOCKED_KEYWORDS = frozenset([
-    # Violence / harm
-    "kill", "murder", "suicide", "bomb", "exploit", "weapon",
+    # Violence / harm (specific phrases only)
+    "murder", "how to hurt", "self harm", "suicide method",
     # Hate speech
     "racist", "sexist", "slur", "hate speech",
     # Adult / explicit
     "porn", "nsfw", "xxx", "nude",
     # Illegal activity
     "hack someone", "ddos", "ransomware", "phishing",
-    "steal password", "keylogger",
+    "steal password", "keylogger", "make a bomb", "build a bomb",
 ])
 
 

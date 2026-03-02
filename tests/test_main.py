@@ -85,16 +85,30 @@ class TestContentSafety:
         assert reason == ""
 
     def test_blocked_violence_keyword(self):
+        # "kill" alone is NOT blocked (too common in programming: kill -9, kill process)
+        # "murder" is never a legitimate coding term
         content = {
-            "title": "How to kill a process #Shorts",
-            "script": "Learn how to kill a process in bash",
-            "code": "kill -9 1234",
+            "title": "How to murder someone tutorial #Shorts",
+            "script": "Learn how to murder in this tutorial",
+            "code": "x = 1",
             "code_before": "",
             "expected_output": "",
         }
         safe, reason = _is_content_safe(content)
         assert not safe
-        assert "kill" in reason
+        assert "murder" in reason
+
+    def test_kill_process_is_NOT_blocked(self):
+        """kill -9 / kill a process is legitimate coding content — must NOT be blocked."""
+        content = {
+            "title": "How to Kill a Process in Bash #Shorts",
+            "script": "Use kill -9 to forcefully terminate a process in Linux.",
+            "code": "kill -9 $(lsof -t -i:8080)",
+            "code_before": "",
+            "expected_output": "",
+        }
+        safe, _ = _is_content_safe(content)
+        assert safe
 
     def test_blocked_hate_speech(self):
         content = {
