@@ -14,6 +14,10 @@ output/
 
 # ─── Documentation (sensitive/personal) ───────────────
 SETUP_GUIDE.md
+DEVELOPMENT_ROADMAP.md
+
+# ─── Pipeline Runtime ─────────────────────────────────
+.last-run
 
 # ─── Python ───────────────────────────────────────────
 __pycache__/
@@ -26,6 +30,8 @@ build/
 .venv*/
 venv*/
 env/
+.pytest_cache/
+.ruff_cache/
 
 # ─── IDE ──────────────────────────────────────────────
 .vscode/
