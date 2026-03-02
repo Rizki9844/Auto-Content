@@ -14,9 +14,9 @@
 | 1 | Stabilization & Security | ✅ Complete | 7/7 |
 | 2 | Observability & Testing | ✅ Complete | 7/7 |
 | 3 | Feature Hardening | ✅ Complete | 7/7 |
-| 4 | Scale & Extensibility | 🔄 In Progress | 2/6 |
+| 4 | Scale & Extensibility | 🔄 In Progress | 3/6 |
 
-**Total: 27 tasks** — 23 completed, 4 remaining
+**Total: 27 tasks** — 24 completed, 3 remaining
 
 ---
 
@@ -238,12 +238,14 @@
 | **Status** | ✅ Complete — Commit `de46a16` (6 Maret 2026) — 250 tests passing |
 | **Peak slots UTC** | 13:00 (8 AM EST), 18:00 (1 PM EST), 00:00 (7 PM EST) |
 
-### 4.3 Analytics Dashboard
+### 4.3 Analytics Dashboard ✅
 
 | Item | Detail |
 | :--- | :--- |
-| **Target** | `src/analytics.py` (file baru) |
-| **Scope** | Query MongoDB untuk generate laporan: (1) Total videos per minggu/bulan. (2) Language distribution pie chart. (3) Content type distribution. (4) Average pipeline latency trend. (5) Success/failure rate. Output sebagai Markdown report atau simple HTML. |
+| **Target** | `src/analytics.py` (file baru), update `src/main.py` |
+| **Scope** | Query MongoDB untuk generate laporan: (1) Total videos per minggu/bulan. (2) Language distribution bar chart. (3) Content type distribution. (4) Average pipeline latency trend. (5) Success/failure rate. (6) Schedule queue status. Output sebagai Markdown report. |
+| **Status** | ✅ Complete — Commit `d5319c2` (6 Maret 2026) — 288 tests passing |
+| **Usage** | `python -m src.main --analytics` (print) · `python -m src.main --analytics --save` (write to `output/`) |
 
 ### 4.4 Template / Theme System
 
