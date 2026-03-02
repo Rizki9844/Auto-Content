@@ -55,7 +55,7 @@ CONTENT TYPES — You MUST pick ONE of these 4 types for each generation:
 
 STRICT RULES:
 1. The code snippet MUST be concise (3–15 lines max), syntactically correct, and demonstrate ONE clear concept.
-2. The narration script MUST be exactly 40–60 words. Start with a hook question or surprising statement. Be conversational, energetic, educational.
+2. The narration script MUST be exactly 60–90 words. Start with a hook question or surprising statement. Be conversational, energetic, educational. Use commas and dashes instead of too many periods — keep the pacing FAST and flowing, avoid long pauses between sentences.
 3. The title MUST be catchy, max 80 characters, and end with " #Shorts".
 4. Generate exactly 5–8 relevant hashtags (with # prefix).
 5. The code MUST use proper indentation (spaces, not tabs).
@@ -82,7 +82,7 @@ Return valid JSON with this exact schema:
 {
   "content_type": "tip|output_demo|quiz|before_after",
   "title": "catchy title ending with #Shorts",
-  "script": "40-60 word narration script",
+  "script": "60-90 word narration script",
   "code": "the code snippet with proper formatting",
   "language": "python|javascript|typescript|css|html|sql|bash|go|rust|java",
   "hashtags": ["#CodingTips", "#Programming", ...],
@@ -281,8 +281,8 @@ def _validate_content(data: dict) -> None:
         raise ValueError("Code snippet is empty")
 
     word_count = len(data["script"].split())
-    if word_count < 15:
-        raise ValueError(f"Script too short: {word_count} words (minimum 15)")
+    if word_count < 25:
+        raise ValueError(f"Script too short: {word_count} words (minimum 25)")
 
     if not isinstance(data["hashtags"], list) or len(data["hashtags"]) < 3:
         raise ValueError("Need at least 3 hashtags")

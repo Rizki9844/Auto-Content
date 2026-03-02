@@ -161,7 +161,8 @@ class FrameRenderer:
             self._tokenize_before_code()
         self._compute_char_positions()
         self._create_base_image()
-        self._create_intro_image()
+        if config.INTRO_DURATION > 0:
+            self._create_intro_image()
         self._create_outro_image()
         if self.code_output:
             self._prepare_output_panel()
@@ -419,45 +420,80 @@ class FrameRenderer:
             draw.line([(x, bar_y2), (x, bar_y2 + bar_h)], fill=c)
 
     def _create_outro_image(self):
-        """Create the outro subscribe card."""
+        """Create a creative outro card with code-themed design."""
         self.outro = self._gradient_bg.copy()
         draw = ImageDraw.Draw(self.outro)
 
-        center_y = self.height // 2
+        cx = self.width // 2
+        cy = self.height // 2
 
-        # Channel name
+        # ── Decorative code comment (top) ─────────────────────
         draw.text(
-            (self.width // 2, center_y - 80),
-            self.channel_name,
-            fill="#ffffff",
-            font=self.outro_font,
+            (cx, cy - 200),
+            "// TODO: hit subscribe 😄",
+            fill="#484f58",
+            font=self.title_sub_font,
             anchor="mm",
         )
 
-        # Subscribe CTA
+        # ── Top gradient accent bar ───────────────────────
+        left_rgb = _hex_to_rgb(config.ACCENT_GRADIENT_LEFT)
+        right_rgb = _hex_to_rgb(config.ACCENT_GRADIENT_RIGHT)
+        bar_left = 150
+        bar_right = self.width - 150
+        bar_y1 = cy - 160
+        for x in range(bar_left, bar_right):
+            t = (x - bar_left) / max(bar_right - bar_left, 1)
+            c = _lerp_color(left_rgb, right_rgb, t)
+            draw.line([(x, bar_y1), (x, bar_y1 + 3)], fill=c)
+
+        # ── Channel name (large) ─────────────────────────
         draw.text(
-            (self.width // 2, center_y),
-            "SUBSCRIBE for daily coding tips!",
-            fill=config.OUTRO_CTA_COLOR,
+            (cx, cy - 110),
+            self.channel_name,
+            fill="#e6edf3",
+            font=self.title_font,
+            anchor="mm",
+        )
+
+        # ── Subscribe button (YouTube-style red pill) ─────
+        btn_w, btn_h = 360, 64
+        btn_x = cx - btn_w // 2
+        btn_y = cy - 20
+        draw.rounded_rectangle(
+            [btn_x, btn_y, btn_x + btn_w, btn_y + btn_h],
+            radius=32, fill="#ff0000",
+        )
+        draw.text(
+            (cx, btn_y + btn_h // 2),
+            "🔔  S U B S C R I B E",
+            fill="#ffffff",
             font=self.outro_sub_font,
             anchor="mm",
         )
 
-        # Accent bar
-        bar_y = center_y + 50
-        left_rgb = _hex_to_rgb(config.ACCENT_GRADIENT_LEFT)
-        right_rgb = _hex_to_rgb(config.ACCENT_GRADIENT_RIGHT)
-        for x in range(200, self.width - 200):
-            t = (x - 200) / max(self.width - 400, 1)
-            c = _lerp_color(left_rgb, right_rgb, t)
-            draw.line([(x, bar_y), (x, bar_y + 3)], fill=c)
-
-        # Follow text
+        # ── Action row ─────────────────────────────────
         draw.text(
-            (self.width // 2, center_y + 80),
-            "🔔 Like & Follow for more",
+            (cx, cy + 80),
+            "👍 Like  ·  🔗 Share  ·  💬 Comment",
             fill="#8b949e",
             font=self.title_sub_font,
+            anchor="mm",
+        )
+
+        # ── Bottom gradient accent bar ────────────────────
+        bar_y2 = cy + 120
+        for x in range(bar_left, bar_right):
+            t = (x - bar_left) / max(bar_right - bar_left, 1)
+            c = _lerp_color(right_rgb, left_rgb, t)
+            draw.line([(x, bar_y2), (x, bar_y2 + 3)], fill=c)
+
+        # ── Tagline ───────────────────────────────────
+        draw.text(
+            (cx, cy + 165),
+            "New coding tips every day! 🚀",
+            fill=config.OUTRO_CTA_COLOR,
+            font=self.outro_sub_font,
             anchor="mm",
         )
 
@@ -534,8 +570,8 @@ class FrameRenderer:
     def render_frame(self, t: float) -> np.ndarray:
         """Render a single video frame at time t seconds."""
 
-        # INTRO
-        if t < self.intro_end:
+        # INTRO (skipped when INTRO_DURATION = 0)
+        if self.intro_end > 0 and t < self.intro_end:
             return self._render_intro(t)
 
         # OUTRO
@@ -554,9 +590,10 @@ class FrameRenderer:
         return np.array(frame)
 
     def _render_outro(self, t: float) -> np.ndarray:
-        """Render outro card with crossfade."""
+        """Render outro card with fast crossfade."""
         elapsed = t - self.outro_start
-        progress = min(elapsed / max(config.OUTRO_DURATION, 0.1), 1.0)
+        # Quick 0.8s crossfade so creative outro is visible longer
+        progress = min(elapsed / 0.8, 1.0)
         alpha = _ease_out_cubic(progress)
         frame = Image.blend(self.base, self.outro, alpha)
         return np.array(frame)

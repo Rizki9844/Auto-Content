@@ -31,7 +31,7 @@ async def _generate_speech_async(
     Internal async implementation.
     Streams audio to file and collects word-level timestamps.
     """
-    communicate = edge_tts.Communicate(text, voice, boundary="WordBoundary")
+    communicate = edge_tts.Communicate(text, voice, rate=config.TTS_RATE, boundary="WordBoundary")
     word_timestamps: list[WordTimestamp] = []
 
     with open(output_path, "wb") as audio_file:

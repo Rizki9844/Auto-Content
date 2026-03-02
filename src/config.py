@@ -94,15 +94,15 @@ OUTRO_SUB_FONT_SIZE = 28
 # ══════════════════════════════════════════════════════════════
 #  ANIMATION TIMING
 # ══════════════════════════════════════════════════════════════
-TYPING_CPS = 25            # characters per second
+TYPING_CPS = 18            # characters per second (slower = more readable)
 CURSOR_BLINK_HZ = 3        # blinks per second
-TYPING_DELAY_START = 0.5   # seconds of pause before typing starts
+TYPING_DELAY_START = 0.3   # seconds of pause before typing starts
 TYPING_DELAY_END = 1.0     # seconds of pause after typing finishes
 
 # Intro / Outro timing
-INTRO_DURATION = 2.0       # seconds for title card intro
-OUTRO_DURATION = 2.5       # seconds for subscribe outro
-OUTPUT_REVEAL_DURATION = 1.5  # seconds for output panel reveal
+INTRO_DURATION = 0.0       # seconds (0 = no intro, jump straight to code)
+OUTRO_DURATION = 3.0       # seconds for creative outro card
+OUTPUT_REVEAL_DURATION = 1.0  # seconds for output panel reveal
 
 
 # ══════════════════════════════════════════════════════════════
@@ -135,6 +135,7 @@ CONTENT_TYPES = ["tip", "output_demo", "quiz", "before_after"]
 #  TTS  (Microsoft Edge Neural Voices via edge-tts)
 # ══════════════════════════════════════════════════════════════
 TTS_VOICE = os.environ.get("TTS_VOICE", "en-US-GuyNeural")
+TTS_RATE = os.environ.get("TTS_RATE", "+10%")  # speed up to compress pauses
 
 
 # ══════════════════════════════════════════════════════════════
