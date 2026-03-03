@@ -16,6 +16,22 @@ def _isolate_env(monkeypatch):
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "")
 
 
+@pytest.fixture(autouse=True)
+def _reset_tts_state():
+    """Reset TTS module global state before each test to prevent cross-test contamination."""
+    try:
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
+    except Exception:
+        pass
+    yield
+    try:
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
+    except Exception:
+        pass
+
+
 @pytest.fixture
 def sample_content():
     """A minimal valid content dict matching LLM output schema."""

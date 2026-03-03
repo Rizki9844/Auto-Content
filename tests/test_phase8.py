@@ -260,21 +260,21 @@ class TestTTSFallback:
         assert _approximate_timestamps([], 5.0) == []
         assert _approximate_timestamps(["hello"], 0) == []
 
-    def test_edge_tts_failure_counter_reset(self):
+    def test_edge_tts_failure_counter_reset(self, tmp_path):
         """Successful edge-tts call resets the failure counter."""
         import src.tts as tts_mod
         tts_mod._edge_tts_consecutive_failures = 2
+        out_file = tmp_path / "test_reset.mp3"
 
         with (
             patch("src.tts.asyncio.run") as mock_run,
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.stat") as mock_stat,
         ):
-            mock_stat.return_value = MagicMock(st_size=5000)
             mock_run.return_value = [
                 tts_mod.WordTimestamp("hello", 0.0, 0.5),
             ]
-            tts_mod.generate_speech("Hello world test sentence for subtitles", output_path="/tmp/test.mp3")
+            # Write a dummy file so the size check passes
+            out_file.write_bytes(b"\x00" * 5000)
+            tts_mod.generate_speech("Hello world test sentence for subtitles", output_path=str(out_file))
 
         assert tts_mod._edge_tts_consecutive_failures == 0
 

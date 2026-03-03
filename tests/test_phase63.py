@@ -94,12 +94,15 @@ class TestTtsVoiceSelection:
                 pass
         return captured_voice[0] if captured_voice else ""
 
-    def test_en_language_uses_en_voice(self):
+    def test_en_language_uses_en_voice(self, tmp_path):
         """When CONTENT_LANGUAGE=en and no explicit voice, use TTS_VOICE."""
         captured: list[str] = []
+        out_file = tmp_path / "test_en.mp3"
 
         async def fake_async(text, voice, path):
             captured.append(voice)
+            # Write a dummy file so the size check passes
+            out_file.write_bytes(b"\x00" * 1000)
             return []
 
         import asyncio
@@ -110,6 +113,9 @@ class TestTtsVoiceSelection:
                 return loop.run_until_complete(coro)
             finally:
                 loop.close()
+
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
 
         with (
             patch("src.config.CONTENT_LANGUAGE", "en"),
@@ -117,25 +123,21 @@ class TestTtsVoiceSelection:
             patch("src.config.TTS_VOICE_ID", "id-ID-GadisNeural"),
             patch("src.tts._generate_speech_async", side_effect=fake_async),
             patch("src.tts.asyncio.run", side_effect=fake_run),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.stat") as mock_stat,
         ):
-            mock_stat.return_value.st_size = 9_999
             from src.tts import generate_speech
-            try:
-                generate_speech("Some text.", voice=None, output_path="/tmp/test_en.mp3")
-            except Exception:
-                pass
+            generate_speech("Some text.", voice=None, output_path=str(out_file))
 
         assert len(captured) == 1
         assert captured[0] == "en-US-ChristopherNeural"
 
-    def test_id_language_uses_id_voice(self):
+    def test_id_language_uses_id_voice(self, tmp_path):
         """When CONTENT_LANGUAGE=id, voice should auto-select TTS_VOICE_ID."""
         captured: list[str] = []
+        out_file = tmp_path / "test_id.mp3"
 
         async def fake_async(text, voice, path):
             captured.append(voice)
+            out_file.write_bytes(b"\x00" * 1000)
             return []
 
         import asyncio
@@ -147,31 +149,30 @@ class TestTtsVoiceSelection:
             finally:
                 loop.close()
 
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
+
         with (
             patch("src.config.CONTENT_LANGUAGE", "id"),
             patch("src.config.TTS_VOICE", "en-US-ChristopherNeural"),
             patch("src.config.TTS_VOICE_ID", "id-ID-GadisNeural"),
             patch("src.tts._generate_speech_async", side_effect=fake_async),
             patch("src.tts.asyncio.run", side_effect=fake_run),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.stat") as mock_stat,
         ):
-            mock_stat.return_value.st_size = 9_999
             from src.tts import generate_speech
-            try:
-                generate_speech("Teks bahasa Indonesia.", voice=None, output_path="/tmp/test_id.mp3")
-            except Exception:
-                pass
+            generate_speech("Teks bahasa Indonesia.", voice=None, output_path=str(out_file))
 
         assert len(captured) == 1
         assert captured[0] == "id-ID-GadisNeural"
 
-    def test_explicit_voice_overrides_language_setting(self):
+    def test_explicit_voice_overrides_language_setting(self, tmp_path):
         """Explicit voice parameter always wins over language auto-select."""
         captured: list[str] = []
+        out_file = tmp_path / "ovr.mp3"
 
         async def fake_async(text, voice, path):
             captured.append(voice)
+            out_file.write_bytes(b"\x00" * 1000)
             return []
 
         import asyncio
@@ -182,6 +183,9 @@ class TestTtsVoiceSelection:
                 return loop.run_until_complete(coro)
             finally:
                 loop.close()
+
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
 
         with (
             patch("src.config.CONTENT_LANGUAGE", "id"),
@@ -189,25 +193,21 @@ class TestTtsVoiceSelection:
             patch("src.config.TTS_VOICE_ID", "id-ID-GadisNeural"),
             patch("src.tts._generate_speech_async", side_effect=fake_async),
             patch("src.tts.asyncio.run", side_effect=fake_run),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.stat") as mock_stat,
         ):
-            mock_stat.return_value.st_size = 9_999
             from src.tts import generate_speech
-            try:
-                generate_speech("Text.", voice="en-GB-RyanNeural", output_path="/tmp/ovr.mp3")
-            except Exception:
-                pass
+            generate_speech("Text.", voice="en-GB-RyanNeural", output_path=str(out_file))
 
         assert len(captured) == 1
         assert captured[0] == "en-GB-RyanNeural"
 
-    def test_ardi_voice_variant_works(self):
+    def test_ardi_voice_variant_works(self, tmp_path):
         """TTS_VOICE_ID=id-ID-ArdiNeural (male option) is used correctly."""
         captured: list[str] = []
+        out_file = tmp_path / "ardi.mp3"
 
         async def fake_async(text, voice, path):
             captured.append(voice)
+            out_file.write_bytes(b"\x00" * 1000)
             return []
 
         import asyncio
@@ -218,6 +218,9 @@ class TestTtsVoiceSelection:
                 return loop.run_until_complete(coro)
             finally:
                 loop.close()
+
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
 
         with (
             patch("src.config.CONTENT_LANGUAGE", "id"),
@@ -225,15 +228,9 @@ class TestTtsVoiceSelection:
             patch("src.config.TTS_VOICE_ID", "id-ID-ArdiNeural"),
             patch("src.tts._generate_speech_async", side_effect=fake_async),
             patch("src.tts.asyncio.run", side_effect=fake_run),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.stat") as mock_stat,
         ):
-            mock_stat.return_value.st_size = 9_999
             from src.tts import generate_speech
-            try:
-                generate_speech("Halo!", voice=None, output_path="/tmp/ardi.mp3")
-            except Exception:
-                pass
+            generate_speech("Halo!", voice=None, output_path=str(out_file))
 
         assert len(captured) == 1
         assert captured[0] == "id-ID-ArdiNeural"
@@ -312,7 +309,7 @@ class TestNarrationLangHintInLLM:
 # ══════════════════════════════════════════════════════════════
 
 class TestContentLanguageIntegration:
-    def test_id_language_affects_both_tts_voice_and_prompt(self):
+    def test_id_language_affects_both_tts_voice_and_prompt(self, tmp_path):
         """
         With CONTENT_LANGUAGE=id:
         - LLM prompt contains LANGUAGE INSTRUCTION
@@ -348,9 +345,11 @@ class TestContentLanguageIntegration:
 
         # 2. Check TTS voice selection
         captured_voice: list[str] = []
+        out_file = tmp_path / "integ.mp3"
 
         async def fake_async(text, voice, path):
             captured_voice.append(voice)
+            out_file.write_bytes(b"\x00" * 1000)
             return []
 
         import asyncio
@@ -362,20 +361,17 @@ class TestContentLanguageIntegration:
             finally:
                 loop.close()
 
+        import src.tts as tts_mod
+        tts_mod._edge_tts_consecutive_failures = 0
+
         with (
             patch("src.config.CONTENT_LANGUAGE", "id"),
             patch("src.config.TTS_VOICE", "en-US-ChristopherNeural"),
             patch("src.config.TTS_VOICE_ID", "id-ID-GadisNeural"),
             patch("src.tts._generate_speech_async", side_effect=fake_async),
             patch("src.tts.asyncio.run", side_effect=fake_run),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.stat") as mock_stat,
         ):
-            mock_stat.return_value.st_size = 9_999
             from src.tts import generate_speech
-            try:
-                generate_speech("Halo semua!", output_path="/tmp/integ.mp3")
-            except Exception:
-                pass
+            generate_speech("Halo semua!", output_path=str(out_file))
 
         assert captured_voice and captured_voice[0] == "id-ID-GadisNeural"
