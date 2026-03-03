@@ -56,7 +56,33 @@ jobs:
             -m "not integration" \
             --cov=src --cov-report=term-missing \
             --junitxml=test-results.xml \
-          || (echo "::error::Tests failed — see output above for details" && exit 1)
+          || true
+
+      # ── Show failed tests as annotations ────────────────────
+      - name: Report test failures
+        if: always()
+        run: |
+          python3 -c "
+          import xml.etree.ElementTree as ET, sys
+          tree = ET.parse('test-results.xml')
+          root = tree.getroot()
+          failures = []
+          for tc in root.iter('testcase'):
+              fail = tc.find('failure')
+              if fail is not None:
+                  name = f\"{tc.get('classname')}.{tc.get('name')}\"
+                  msg = (fail.text or '')[:500]
+                  failures.append((name, msg))
+          if failures:
+              for name, msg in failures:
+                  print(f'::error::{name}')
+                  for line in msg.strip().split(chr(10)):
+                      print(f'  {line}')
+              print(f'::error::Total test failures: {len(failures)}')
+              sys.exit(1)
+          else:
+              print('All tests passed!')
+          "
 
       # ── Upload test results (optional, for PR annotations) ──
       - name: Upload test results
