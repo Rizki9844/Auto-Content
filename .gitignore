@@ -22,6 +22,7 @@ test_out.txt
 test_err.txt
 test_results.txt
 test_results_full.txt
+test-results.xml
 .coverage
 htmlcov/
 
