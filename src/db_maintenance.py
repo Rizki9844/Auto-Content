@@ -10,9 +10,7 @@ Usage:
     python -m src.main --maintenance      # run all maintenance tasks
 """
 import logging
-import os
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
 from src import config
 

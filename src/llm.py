@@ -243,7 +243,6 @@ def _load_templates() -> list[dict]:
     if _TEMPLATES is not None:
         return _TEMPLATES
 
-    import pathlib
     templates_dir = config.ROOT_DIR / "templates"
     _TEMPLATES = []
     if not templates_dir.is_dir():
@@ -285,7 +284,7 @@ def pick_template(
 
     # Filter out languages we want to avoid
     if avoid_languages:
-        avoid_set = {l.lower() for l in avoid_languages}
+        avoid_set = {lang.lower() for lang in avoid_languages}
         filtered = [t for t in candidates if t.get("language", "").lower() not in avoid_set]
         if filtered:
             candidates = filtered
@@ -511,7 +510,7 @@ def generate_content(
                 )
             if hints:
                 analytics_hint = (
-                    f"\n\n══ PERFORMANCE FEEDBACK (optional guidance) ══\n"
+                    "\n\n══ PERFORMANCE FEEDBACK (optional guidance) ══\n"
                     + "\n".join(f"  • {h}" for h in hints)
                     + "\n  Use these as loose guidance — don't repeat the same topic every time."
                 )

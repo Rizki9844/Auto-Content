@@ -197,7 +197,7 @@ def _get_latest_video_id(service: Any, exclude_id: str) -> str | None:
         col = _get_collection()
         doc = col.find_one(
             {
-                "youtube_id": {"$ne": exclude_id, "$exists": True, "$ne": None},
+                "youtube_id": {"$exists": True, "$nin": [exclude_id, None]},
                 "status": "success",
             },
             sort=[("published_at", -1)],

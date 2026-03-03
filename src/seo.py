@@ -54,7 +54,6 @@ def _build_bullets(content: dict) -> list[str]:
     bullets: list[str] = []
 
     lang = content.get("language", "").capitalize()
-    title = content.get("title", "")
     content_type = content.get("content_type", "tip")
 
     # Bullet 1: what language/topic

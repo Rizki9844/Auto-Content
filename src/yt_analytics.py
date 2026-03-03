@@ -250,7 +250,7 @@ def fetch_and_store_recent(
     try:
         col = _get_collection()
         query: dict[str, Any] = {
-            "youtube_id": {"$exists": True, "$ne": None, "$ne": ""},
+            "youtube_id": {"$exists": True, "$nin": [None, ""]},
             "status": "success",
             "created_at": {"$lte": upload_cutoff},
             "$or": [
