@@ -8,8 +8,6 @@ import importlib
 import os
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 # ══════════════════════════════════════════════════════════════
 #  config.py — new Phase 6.3 fields
@@ -105,8 +103,6 @@ class TestTtsVoiceSelection:
             return []
 
         import asyncio
-
-        original_run = asyncio.run
 
         def fake_run(coro):
             loop = asyncio.new_event_loop()

@@ -371,7 +371,6 @@ class TestTrendingInjectionInLLM:
             patch("src.trending.get_trending_topics", return_value=mock_topics),
             patch("src.llm.config.ENABLE_TRENDING", "1"),
         ):
-            from importlib import reload
             import src.llm as llm_mod
             # Re-patch the trending import inside llm
             with patch.dict("sys.modules", {}):

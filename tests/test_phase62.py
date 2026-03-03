@@ -5,10 +5,8 @@ Covers: src/yt_analytics.py, analytics.py section 8, llm.py hint, main.py CLI
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from bson import ObjectId
-
-import pytest
 
 
 # ══════════════════════════════════════════════════════════════

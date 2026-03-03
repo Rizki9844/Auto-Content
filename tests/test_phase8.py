@@ -10,10 +10,9 @@ Covers:
 """
 import os
 import time
-import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 

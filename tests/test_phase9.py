@@ -9,11 +9,8 @@ Covers:
   9.5 AI Thumbnail v2 (thumbnail.py)
 """
 import json
-import os
-import time
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -60,7 +57,7 @@ class TestBgMusicSelectTrack:
     """Test track selection with anti-repeat logic."""
 
     def test_select_from_list(self, tmp_path):
-        from src.bgmusic import select_track, _HISTORY_FILE
+        from src.bgmusic import select_track
         with patch("src.bgmusic._HISTORY_FILE", tmp_path / "hist.json"):
             tracks = [tmp_path / "a.mp3", tmp_path / "b.mp3"]
             chosen = select_track(tracks)
@@ -618,7 +615,7 @@ class TestPhase9Integration:
             "auth_youtube",
             str(Path(__file__).parent.parent / "scripts" / "auth_youtube.py"),
         )
-        mod = importlib.util.module_from_spec(spec)
+        mod = importlib.util.module_from_spec(spec)  # noqa: F841
         # Just check the source has --channel
         source = Path(spec.origin).read_text()
         assert "--channel" in source

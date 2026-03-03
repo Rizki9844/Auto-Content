@@ -5,8 +5,7 @@ Covers: series_planner.py, llm.py series_context, renderer.py badge,
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -562,7 +561,6 @@ class TestSeriesCLI:
 
     def test_series_pipeline_called_with_correct_args(self):
         """series_pipeline is invoked with parsed theme and episode count."""
-        from src.main import series_pipeline
         import sys
 
         called_args: list = []
