@@ -6,11 +6,12 @@
 
 *Generate → Render → Upload — Zero Human Intervention*
 
-[![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
+[![Python](https://img.shields.io/badge/Python_3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Gemini](https://img.shields.io/badge/Gemini_2.5_Flash-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](#)
 [![YouTube](https://img.shields.io/badge/YouTube_Shorts-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](#)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](#)
 [![MongoDB](https://img.shields.io/badge/MongoDB_Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](#)
+[![Tests](https://img.shields.io/badge/Tests-744_passing-brightgreen?style=for-the-badge)](#)
 
 </div>
 
@@ -22,21 +23,67 @@
 
 Every execution cycle generates a unique topic (never repeating thanks to MongoDB-powered deduplication), renders a polished vertical video with syntax-highlighted typing animation, natural AI voiceover, karaoke-style synced subtitles, and uploads it with optimized metadata — all in under 5 minutes.
 
-## ✨ Core Features
+## ✨ Features
 
+### 🧠 Content Intelligence
 | Feature | Description |
 | :--- | :--- |
-| **AI Content Engine** | Gemini 2.5 Flash generates structured content with 4 distinct content types, rotating across 15+ languages and categories |
-| **Neural Text-to-Speech** | Microsoft Edge TTS produces natural voiceover with word-level timing for precise subtitle synchronization |
-| **Cinema-Grade Renderer** | Pillow + Pygments render 1080×1920 frames with GitHub Dark theme syntax highlighting, smooth easing animations, and cinematic intro/outro cards |
-| **Live Code Execution** | Sandboxed subprocess runner executes Python, JavaScript, and Bash snippets to display real output in videos |
-| **Smart Deduplication** | MongoDB Atlas history prevents topic repetition across thousands of generations |
-| **Telegram Monitoring** | Real-time bot notifications on pipeline success or failure — straight to your phone |
-| **Credential Security** | Built-in log redaction filter masks MongoDB URIs, API keys, and OAuth tokens from CI output |
+| **AI Content Engine** | Gemini 2.5 Flash generates structured content with 4 distinct types, rotating across 15+ languages |
+| **Trending Topics** | Google Trends + YouTube Trending integration for topic freshness |
+| **YouTube Analytics Loop** | Fetches views, likes, AVD — feeds back into prompt optimization |
+| **Multi-Language** | Full Bahasa Indonesia (`id`) support with localized narration & TTS |
+| **Series Generator** | Multi-episode series planning with episode chaining |
+| **Prompt A/B Testing** | Variant A vs B prompt rotation with performance tracking |
+| **Content Templates** | Reusable template library (Python tips, JS patterns, Git tricks) |
+| **Voice & Tone Variety** | Energetic, calm, curious, dramatic — auto-rotates daily |
+
+### 🎨 Visual Excellence
+| Feature | Description |
+| :--- | :--- |
+| **Cinema-Grade Renderer** | 1080×1920 Pillow frames with syntax highlighting, smooth easing, and cinematic cards |
+| **Animated Code Highlighting** | Line-level glow synced to narration word timestamps |
+| **Theme System** | GitHub Dark, Monokai, Dracula — auto-rotate or pick one |
+| **Background Particles** | Subtle animated particles for visual depth |
+| **Line Slide-In** | Each code line slides in from left for smooth appearance |
+| **AI Thumbnails v2** | Stability AI backgrounds + Pillow text overlay (with auto-cache) |
+
+### 📈 Growth Engine
+| Feature | Description |
+| :--- | :--- |
+| **SEO Descriptions** | AI-generated YouTube descriptions with keywords, timestamps, hashtags |
+| **Auto Pinned Comments** | CTA comment posted automatically after upload |
+| **Smart Playlists** | Auto-managed playlists per language and series |
+| **Upload Queue** | Retry-safe queue with exponential backoff |
+| **Rate Limiter** | Token bucket rate limiting for all external APIs |
+| **Multi-Channel** | Upload to multiple YouTube channels simultaneously |
+
+### 🛡️ Production Reliability
+| Feature | Description |
+| :--- | :--- |
+| **Self-Healing** | Health monitor with auto-recovery, Gemini model fallback |
+| **DB Maintenance** | Auto-archive old records, storage alerts at 80% capacity |
+| **Pipeline Logger** | Step-by-step structured logging with timing |
+| **Graceful Timeouts** | Per-step timeout with automatic cleanup |
+| **Staging Workflow** | Separate staging environment for safe testing |
+
+### 🎵 Advanced Features
+| Feature | Description |
+| :--- | :--- |
+| **Background Music** | Royalty-free lo-fi track mixing with anti-repeat logic |
+| **Dashboard** | Flask web UI for monitoring pipeline, videos, analytics, health |
+
+### 🔧 Core Pipeline
+| Feature | Description |
+| :--- | :--- |
+| **Neural TTS** | Microsoft Edge TTS with word-level timing for subtitle sync |
+| **Live Code Execution** | Sandboxed subprocess runs Python, JavaScript, Bash snippets |
+| **Smart Deduplication** | MongoDB history prevents topic repetition |
+| **Telegram Monitoring** | Real-time notifications on success or failure |
+| **Credential Security** | Log redaction masks all secrets from CI output |
 
 ## 🎨 Content Types
 
-The AI rotates between four distinct video formats to maximize viewer engagement:
+The AI rotates between four distinct video formats to maximize engagement:
 
 ```
 ┌──────────────────┬──────────────────────────────────────────────────────┐
@@ -57,78 +104,111 @@ The AI rotates between four distinct video formats to maximize viewer engagement
                     │    └────────────┬────────────┘   │
                     └─────────────────┼────────────────┘
                                       │
-          ┌───────────────────────────┼───────────────────────────┐
-          ▼                           ▼                           ▼
-  ┌───────────────┐          ┌───────────────┐          ┌───────────────┐
-  │   Gemini AI   │          │  MongoDB Atlas │          │  YouTube API  │
-  │  Content Gen  │          │   Dedup Store  │          │ Shorts Upload │
-  └───────┬───────┘          └───────────────┘          └───────▲───────┘
-          │                                                     │
-          ▼                                                     │
-  ┌───────────────┐     ┌───────────────┐     ┌───────────────┐ │
-  │   Edge TTS    │────▶│   Renderer    │────▶│    moviepy    │─┘
-  │  + Timestamps │     │  Pillow/Pyg   │     │  Video Build  │
-  └───────────────┘     └───────────────┘     └───────────────┘
-                              │
-                        ┌─────┴─────┐
-                        ▼           ▼
-                  ┌───────────┐ ┌──────────┐
-                  │  Code     │ │ Telegram  │
-                  │  Runner   │ │ Notifier  │
-                  └───────────┘ └──────────┘
+    ┌─────────────┬───────────────────┼───────────────────┬─────────────┐
+    ▼             ▼                   ▼                   ▼             ▼
+┌─────────┐ ┌──────────┐     ┌───────────────┐    ┌──────────┐ ┌──────────┐
+│ Gemini  │ │ Trending │     │  MongoDB Atlas │    │ YouTube  │ │ Stability│
+│ Content │ │ (Google  │     │  Dedup + Stats │    │ Data API │ │ AI (Thumb│
+│  Gen    │ │ Trends)  │     └───────────────┘    │ Upload   │ │  nails)  │
+└────┬────┘ └──────────┘                           └─────▲────┘ └──────────┘
+     │                                                   │
+     ▼                                                   │
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌───────┴──────┐
+│ Edge TTS │───▶│ BG Music │───▶│ Renderer │───▶│ moviepy      │
+│ + Timing │    │  Mixer   │    │ Pillow   │    │ Video Build  │
+└──────────┘    └──────────┘    └──────────┘    └──────────────┘
+                                      │
+                              ┌───────┴───────┐
+                              ▼               ▼
+                        ┌──────────┐    ┌──────────┐
+                        │  Code    │    │ Telegram  │
+                        │  Runner  │    │ Notifier  │
+                        └──────────┘    └──────────┘
 ```
 
 ### Pipeline Flow
 
-1. **Content Generation** — Gemini 2.5 Flash generates structured JSON with code, narration, hashtags, and content-type-specific fields
-2. **Code Execution** — For `output_demo` and `quiz` types, a sandboxed subprocess runs the code to capture real output
-3. **Voiceover Synthesis** — Edge TTS generates audio with word-level timestamps for subtitle synchronization
-4. **Video Rendering** — Pillow renders each frame (intro card → typing animation → output panel → outro CTA) at 30fps
-5. **Video Assembly** — moviepy composites frames + audio into a 1080×1920 MP4
-6. **YouTube Upload** — OAuth2-authenticated upload as YouTube Shorts with auto-generated metadata
-7. **Record & Notify** — MongoDB stores the full record; Telegram sends a status alert
+1. **Content Generation** — Gemini 2.5 Flash generates structured JSON with code, narration, hashtags
+2. **Code Execution** — Sandboxed subprocess runs the code to capture real output
+3. **Voiceover Synthesis** — Edge TTS generates audio with word-level timestamps
+4. **Background Music** — Optional lo-fi track mixed at 7% volume with fade in/out
+5. **Video Rendering** — Pillow renders frames at 30fps with animated highlights
+6. **Video Assembly** — moviepy composites frames + audio into a 1080×1920 MP4
+7. **Thumbnail** — Pillow or AI-generated (Stability AI) cover image
+8. **YouTube Upload** — OAuth2-authenticated upload with SEO metadata, auto-comment, playlist
+9. **Record & Notify** — MongoDB stores record; Telegram sends status alert
 
 ## 🛠️ Stack & Dependencies
 
-| Category | Technology | Version | Purpose |
-| :--- | :--- | :--- | :--- |
-| **LLM** | Google Gemini (genai SDK) | ≥1.0.0 | AI content generation with structured JSON output |
-| **TTS** | edge-tts | ≥6.1.0 | Neural voiceover with word-level timestamps |
-| **Video** | moviepy | 2.x | Video composition and audio sync |
-| **Graphics** | Pillow | ≥10.0.0 | Frame-by-frame rendering with anti-aliased text |
-| **Syntax** | Pygments | ≥2.17.0 | Token-level syntax highlighting (GitHub Dark) |
-| **Database** | pymongo[srv] | ≥4.6.0 | MongoDB Atlas operations + deduplication |
-| **Upload** | google-api-python-client | ≥2.100.0 | YouTube Data API v3 |
-| **Auth** | google-auth-oauthlib | ≥1.2.0 | OAuth2 refresh token flow |
-| **Runtime** | Python | 3.12 | Primary runtime |
-| **CI/CD** | GitHub Actions | ubuntu-latest | Scheduled + manual execution |
+| Category | Technology | Purpose |
+| :--- | :--- | :--- |
+| **LLM** | Google Gemini (genai SDK) | AI content generation with structured JSON |
+| **TTS** | edge-tts / gTTS (fallback) | Neural voiceover with word-level timestamps |
+| **Video** | moviepy 2.x | Video composition, audio sync, BG music mixing |
+| **Graphics** | Pillow + Pygments | Frame rendering with syntax highlighting |
+| **Database** | pymongo[srv] | MongoDB Atlas operations + deduplication |
+| **Upload** | google-api-python-client | YouTube Data API v3 |
+| **Auth** | google-auth-oauthlib | OAuth2 refresh token flow |
+| **Dashboard** | Flask | Pipeline monitoring web UI |
+| **AI Thumbnails** | requests + Stability AI | AI-generated video thumbnails |
+| **Trending** | pytrends | Google Trends integration |
+| **Runtime** | Python 3.12+ | Primary runtime |
+| **CI/CD** | GitHub Actions | Scheduled (2×/day) + manual execution |
 
 <details>
 <summary><b>📂 Project Structure</b></summary>
 
 ```text
 .
-├── .github/
-│   └── workflows/
-│       └── generate.yml          # Cron schedule (2×/day) + manual dispatch
+├── .github/workflows/
+│   ├── generate.yml              # Main pipeline (cron 2×/day + manual)
+│   ├── upload-queue.yml          # Upload retry queue
+│   ├── ci.yml                    # Test suite on push/PR
+│   └── staging.yml               # Staging environment pipeline
 ├── assets/
-│   └── fonts/
-│       ├── JetBrainsMono-Bold.ttf
-│       └── JetBrainsMono-Regular.ttf
+│   ├── fonts/
+│   │   ├── JetBrainsMono-Bold.ttf
+│   │   └── JetBrainsMono-Regular.ttf
+│   └── music/                    # Royalty-free background tracks
+├── dashboard/
+│   ├── app.py                    # Flask monitoring dashboard
+│   └── templates/                # Dark-themed HTML templates
 ├── scripts/
-│   └── auth_youtube.py           # One-time OAuth2 setup helper
+│   └── auth_youtube.py           # OAuth2 setup (supports multi-channel)
 ├── src/
-│   ├── __init__.py
-│   ├── main.py                   # Pipeline orchestrator (5-step flow)
+│   ├── main.py                   # Pipeline orchestrator
 │   ├── config.py                 # Centralized config (env vars, colors, layout)
-│   ├── llm.py                    # Gemini content gen + 5-step JSON repair
-│   ├── tts.py                    # Edge TTS with word timestamps
-│   ├── renderer.py               # Frame renderer (800+ lines of Pillow magic)
+│   ├── llm.py                    # Gemini content gen + JSON repair + templates
+│   ├── tts.py                    # Edge TTS / gTTS with word timestamps
+│   ├── renderer.py               # Frame renderer (1200+ lines)
 │   ├── video.py                  # moviepy video assembly
-│   ├── code_runner.py            # Sandboxed code execution (Python/JS/bash)
+│   ├── bgmusic.py                # Background music selection & mixing
+│   ├── code_runner.py            # Sandboxed code execution (Python/JS/Bash)
 │   ├── uploader_youtube.py       # YouTube Shorts OAuth2 upload
-│   ├── notifier.py               # Telegram Bot API notifications
-│   └── db.py                     # MongoDB Atlas CRUD + stats
+│   ├── uploader_base.py          # Base uploader with retry queue
+│   ├── multi_channel.py          # Multi-channel YouTube support
+│   ├── thumbnail.py              # Pillow + AI (Stability) thumbnail generator
+│   ├── seo.py                    # SEO description generator
+│   ├── youtube_actions.py        # Auto-comment, playlists, end-screen
+│   ├── playlist_manager.py       # Playlist CRUD
+│   ├── trending.py               # Google Trends + YouTube Trending
+│   ├── yt_analytics.py           # YouTube Analytics feedback loop
+│   ├── series_planner.py         # Multi-episode series planning
+│   ├── analytics.py              # Content performance analytics
+│   ├── scheduler.py              # Smart upload scheduling
+│   ├── rate_limiter.py           # Token bucket rate limiter
+│   ├── health_monitor.py         # Self-healing health checks
+│   ├── db_maintenance.py         # Archive, cleanup, storage alerts
+│   ├── pipeline_logger.py        # Structured step logging
+│   ├── quality.py                # Content quality scoring
+│   ├── notifier.py               # Telegram notifications
+│   ├── db.py                     # MongoDB Atlas CRUD + stats
+│   ├── theme_loader.py           # Theme system (JSON themes)
+│   ├── errors.py                 # Custom exception hierarchy
+│   └── plugins/                  # Plugin system (event logger, etc.)
+├── templates/                    # Content template library (JSON)
+├── themes/                       # Color themes (github_dark, monokai, dracula)
+├── tests/                        # 744 tests across 14 test files
 └── requirements.txt
 ```
 
@@ -140,10 +220,11 @@ The AI rotates between four distinct video formats to maximize viewer engagement
 | :--- | :--- |
 | **Credential Storage** | All secrets stored as GitHub Actions encrypted secrets — never in code |
 | **Log Redaction** | `CredentialFilter` regex masks MongoDB URIs, API keys, and OAuth tokens in CI logs |
-| **Code Sandbox** | Pattern-based blocklist prevents `os`, `subprocess`, `eval`, filesystem, and network access in executed snippets |
+| **Code Sandbox** | Pattern-based blocklist prevents `os`, `subprocess`, `eval`, filesystem, and network access |
 | **Execution Limits** | 10-second timeout + 500-char output cap per code execution |
 | **OAuth2** | Refresh token flow — no long-lived access tokens stored |
-| **GitHub Actions** | Pinned action SHAs prevent supply-chain attacks; minimal `contents: write` permission |
+| **GitHub Actions** | Pinned action SHAs prevent supply-chain attacks; minimal permissions |
+| **Self-Healing** | Auto-recovery from API failures with model fallback |
 
 ## ⚙️ Environment Configuration
 
@@ -163,14 +244,41 @@ The AI rotates between four distinct video formats to maximize viewer engagement
 | :--- | :--- |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather |
 | `TELEGRAM_CHAT_ID` | Target Telegram chat ID |
+| `STABILITY_API_KEY` | Stability AI key (for AI thumbnails) |
+| `YOUTUBE_CHANNEL_ID` | YouTube channel ID (for analytics) |
+| `YOUTUBE_API_KEY` | YouTube API key (for trending/analytics) |
 
-### Optional Variables (GitHub Actions → Settings → Variables)
+### Optional Variables
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `CHANNEL_NAME` | `@DevInSeconds` | Watermark branding on video |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model identifier |
-| `TTS_VOICE` | `en-US-GuyNeural` | Microsoft Neural TTS voice |
+| `TTS_VOICE` | `en-US-ChristopherNeural` | Microsoft Neural TTS voice |
+| `CONTENT_LANGUAGE` | `en` | Content language (`en` / `id`) |
+| `ACTIVE_THEME` | `github_dark` | Color theme (github_dark / monokai / dracula) |
+| `AUTO_ROTATE_THEMES` | `0` | Set `1` to rotate themes daily |
+| `PROMPT_VARIANT` | `auto` | A/B test variant (`A` / `B` / `auto`) |
+| `NARRATOR_TONE` | `auto` | Voice tone (energetic / calm / curious / dramatic / auto) |
+| `ENABLE_BGMUSIC` | `0` | Set `1` to enable background music |
+| `ENABLE_THUMBNAILS` | `0` | Set `1` to generate custom thumbnails |
+| `THUMBNAIL_STYLE` | `pillow` | Thumbnail engine (`pillow` / `ai`) |
+| `ENABLE_YT_ANALYTICS` | `0` | Set `1` to enable analytics feedback |
+| `ENABLE_TRENDING` | `0` | Set `1` to use trending topics |
+| `ENABLE_SEO_DESCRIPTION` | `1` | SEO-optimized video descriptions |
+| `ENABLE_SMART_SCHEDULE` | `0` | Analytics-based upload timing |
+| `ENVIRONMENT` | `production` | `production` / `staging` |
+
+## 📊 Dashboard
+
+Run the built-in monitoring dashboard locally:
+
+```bash
+python -m dashboard.app
+# Open http://localhost:5050
+```
+
+**Routes:** Overview (`/`) · Videos (`/videos`) · Analytics (`/analytics`) · Health (`/health`) · API (`/api/stats`)
 
 ## 📅 Schedule
 
@@ -182,6 +290,16 @@ Automated via GitHub Actions cron:
 | `20:00` | 03:00 | Daily |
 
 Manual trigger available via **Actions** → **Run workflow**.
+
+## 🧪 Testing
+
+```bash
+# Run full test suite (744 tests)
+python -m pytest
+
+# Run specific phase tests
+python -m pytest tests/test_phase9.py -v
+```
 
 <details>
 <summary><b>🚀 Local Development</b></summary>
@@ -203,6 +321,9 @@ cp .env.example .env          # Edit with your credentials
 
 # 4. Run pipeline
 python -m src.main
+
+# 5. Run tests
+python -m pytest
 ```
 
 </details>
@@ -213,6 +334,8 @@ python -m src.main
 
 **Built with** 🐍 Python **·** 🤖 Gemini AI **·** 🎬 moviepy **·** ☁️ GitHub Actions
 
-<sub>Hak Cipta © 2026 Rizki Malik Fajar. All rights reserved.</sub>
+**744 tests** · **9 development phases** · **10,000+ lines of production code**
+
+<sub>Copyright © 2026 Rizki Malik Fajar. All rights reserved.</sub>
 
 </div>

@@ -20,7 +20,7 @@ FAKE_CONTENT = {
     "code": "if (n := len([1,2,3])) > 2:\n    print(f'List has {n} items')",
     "language": "python",
     "hashtags": ["#Python", "#WalrusOperator", "#CodingTips", "#Programming", "#Shorts"],
-    "content_type": "output_demo",
+    "content_type": "tip",
     "expected_output": "List has 3 items",
     "quiz_answer": "",
     "code_before": "",

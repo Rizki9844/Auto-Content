@@ -1,11 +1,13 @@
-"""Video frame renderer v2 — Pillow + Pygments.
+"""Video frame renderer v3 — Pillow + Pygments.
 Enhanced with:
   - Intro title card with gradient accent
-  - Multiple content types (tip, output_demo, quiz, before_after)
+  - Multiple content types (tip, quiz, before_after)
   - Terminal output panel for code execution results
-  - Outro with subscribe CTA
-  - Smoother animations with easing
-  - Karaoke-style subtitles synced to TTS
+  - Animated outro with subscribe CTA pulse (Phase 5.8)
+  - Per-line slide-in animation (Phase 5.5)
+  - Redesigned preview panels per content type (Phase 5.6)
+  - Adaptive multi-line karaoke subtitles (Phase 5.7)
+  - Subtle background particle effects (Phase 5.9)
   - Channel branding watermark
   - Theme system support (Phase 4.4)
 """
@@ -32,20 +34,20 @@ SYNTAX_COLORS: dict = {
     Token.Keyword.Namespace:        "#ff7b72",
     Token.Keyword.Pseudo:           "#ff7b72",
     Token.Keyword.Reserved:         "#ff7b72",
-    Token.Keyword.Type:             "#ffa657",
-    Token.Name.Function:            "#d2a8ff",
-    Token.Name.Function.Magic:      "#d2a8ff",
-    Token.Name.Class:               "#ffa657",
-    Token.Name.Decorator:           "#d2a8ff",
-    Token.Name.Builtin:             "#ffa657",
+    Token.Keyword.Type:             "#ffb86c",      # warmer orange
+    Token.Name.Function:            "#e2b5ff",      # brighter purple
+    Token.Name.Function.Magic:      "#e2b5ff",
+    Token.Name.Class:               "#ffb86c",      # warmer orange
+    Token.Name.Decorator:           "#e2b5ff",
+    Token.Name.Builtin:             "#ffb86c",      # warmer orange
     Token.Name.Builtin.Pseudo:      "#79c0ff",
     Token.Name.Tag:                 "#7ee787",
     Token.Name.Attribute:           "#79c0ff",
-    Token.Name.Variable:            "#ffa657",
+    Token.Name.Variable:            "#ffb86c",
     Token.Name.Constant:            "#79c0ff",
-    Token.Literal.String:           "#a5d6ff",
+    Token.Literal.String:           "#79dafa",      # brighter blue
     Token.Literal.String.Doc:       "#8b949e",
-    Token.Literal.String.Interpol:  "#a5d6ff",
+    Token.Literal.String.Interpol:  "#79dafa",
     Token.Literal.String.Escape:    "#79c0ff",
     Token.Literal.String.Affix:     "#ff7b72",
     Token.Literal.Number:           "#79c0ff",
@@ -76,7 +78,6 @@ EXT_MAP = {
 # Content type labels for intro
 CONTENT_TYPE_LABELS = {
     "tip": "💡 CODING TIP",
-    "output_demo": "▶ OUTPUT DEMO",
     "quiz": "🧠 CODE QUIZ",
     "before_after": "✨ BEFORE → AFTER",
 }
@@ -173,6 +174,7 @@ class FrameRenderer:
         code_output: str | None = None,
         code_before: str | None = None,
         title: str = "",
+        series_part: int = 0,
     ):
         self.code = code.rstrip()
         self.language = language.lower()
@@ -184,6 +186,7 @@ class FrameRenderer:
         self.code_output = code_output
         self.code_before = code_before
         self.title = title
+        self.series_part = series_part  # Phase 6.4 — 0 means not part of a series
 
         # Apply active theme (Phase 4.4) — patches config before any rendering
         try:
@@ -230,6 +233,10 @@ class FrameRenderer:
         if self.code_output:
             self._prepare_output_panel()
         self._create_subtitle_groups()
+        self._init_bg_particles()
+
+        # Phase 9.2: Build code-to-narration keyword index for animated highlighting
+        self._build_code_keyword_index()
 
         logger.info(
             f"FrameRenderer ready: type={self.content_type}, "
@@ -257,6 +264,7 @@ class FrameRenderer:
         self.code_font_bold = ImageFont.truetype(config.FONT_BOLD, self.code_font_size)
         self.line_num_font = ImageFont.truetype(config.FONT_REGULAR, self.line_num_font_size)
         self.subtitle_font = ImageFont.truetype(config.FONT_BOLD, config.SUBTITLE_FONT_SIZE)
+        self.subtitle_font_small = ImageFont.truetype(config.FONT_BOLD, 40)  # adaptive for long groups
         self.watermark_font = ImageFont.truetype(config.FONT_REGULAR, config.WATERMARK_FONT_SIZE)
         self.chrome_font = ImageFont.truetype(config.FONT_REGULAR, config.CHROME_FONT_SIZE)
         self.title_font = ImageFont.truetype(config.FONT_BOLD, config.TITLE_FONT_SIZE)
@@ -374,7 +382,7 @@ class FrameRenderer:
         draw.rounded_rectangle(
             [config.PADDING, config.PREVIEW_Y,
              self.width - config.PADDING, config.PREVIEW_BOTTOM],
-            radius=12, fill=config.CODE_BG,
+            radius=16, fill=config.CODE_BG,
         )
 
         # Preview chrome bar
@@ -382,7 +390,7 @@ class FrameRenderer:
         draw.rounded_rectangle(
             [config.PADDING, config.PREVIEW_Y,
              self.width - config.PADDING, config.PREVIEW_Y + 20],
-            radius=12, fill=config.CHROME_BG,
+            radius=16, fill=config.CHROME_BG,
         )
         draw.rectangle(
             [config.PADDING, config.PREVIEW_Y + 12,
@@ -455,7 +463,7 @@ class FrameRenderer:
         draw.rounded_rectangle(
             [config.PADDING, config.CHROME_Y,
              self.width - config.PADDING, panel_bottom],
-            radius=12, fill=config.CODE_BG,
+            radius=16, fill=config.CODE_BG,
         )
 
         # Code chrome bar
@@ -463,7 +471,7 @@ class FrameRenderer:
         draw.rounded_rectangle(
             [config.PADDING, config.CHROME_Y,
              self.width - config.PADDING, config.CHROME_Y + 22],
-            radius=12, fill=config.CHROME_BG,
+            radius=16, fill=config.CHROME_BG,
         )
         draw.rectangle(
             [config.PADDING, config.CHROME_Y + 12,
@@ -568,6 +576,27 @@ class FrameRenderer:
             t = (x - bar_left) / max(bar_right - bar_left, 1)
             c = _lerp_color(right_rgb, left_rgb, t)
             draw.line([(x, bar_y2), (x, bar_y2 + bar_h)], fill=c)
+
+        # Series part badge (Phase 6.4) — top-right pill when part of a series
+        if self.series_part > 0:
+            badge_text = f"Part {self.series_part}"
+            bbox = draw.textbbox((0, 0), badge_text, font=self.title_sub_font)
+            bw = (bbox[2] - bbox[0]) + 28
+            bh = (bbox[3] - bbox[1]) + 14
+            bx = self.width - 60
+            by = 130
+            badge_color = _hex_to_rgb(config.ACCENT_GRADIENT_LEFT)
+            draw.rectangle(
+                [(bx - bw, by - bh // 2), (bx, by + bh // 2)],
+                fill=badge_color,
+            )
+            draw.text(
+                (bx - bw // 2, by),
+                badge_text,
+                fill="#ffffff",
+                font=self.title_sub_font,
+                anchor="mm",
+            )
 
     def _create_outro_image(self):
         """Create a creative outro card with code-themed design."""
@@ -711,6 +740,165 @@ class FrameRenderer:
             )
 
     # ──────────────────────────────────────────────────────────
+    #  ANIMATION HELPERS  (Phase 5)
+    # ──────────────────────────────────────────────────────────
+
+    def _init_bg_particles(self):
+        """Pre-compute floating code particle positions (deterministic, no random)."""
+        chars  = ["{}" , "=>", "0x", "let", "def", "//"]
+        speeds = [18, 24, 15, 22, 28, 20]          # px/sec
+        ys     = [165, 295, 430, 560, 640, 380]    # y positions
+        x0s    = [0, 220, 440, 660, 110, 330]      # starting x offsets
+        self._bg_particles = [
+            {"char": chars[i], "y": ys[i], "speed": speeds[i], "x0": x0s[i]}
+            for i in range(len(chars))
+        ]
+
+    def _draw_bg_particles(self, draw: ImageDraw.ImageDraw, t: float):
+        """Draw very subtle floating code fragments in the background."""
+        # Blend between CODE_BG and LINE_HIGHLIGHT at 55% — barely visible
+        particle_color = _lerp_color(
+            _hex_to_rgb(config.CODE_BG),
+            _hex_to_rgb(config.LINE_HIGHLIGHT),
+            0.55,
+        )
+        for p in self._bg_particles:
+            x = int((p["x0"] + t * p["speed"]) % (self.width + 120))
+            draw.text((x, p["y"]), p["char"], fill=particle_color, font=self.chrome_font)
+
+    def _get_line_slide_offset(self, n_chars: int) -> tuple[int, int]:
+        """Return (active_line_y, x_offset) for per-line slide-in animation."""
+        if n_chars <= 0 or n_chars >= self.total_chars:
+            return -1, 0
+
+        _, _, cur_y, _ = self.char_data[n_chars - 1]
+
+        # Walk back to find the first char on this line
+        line_start_idx = n_chars - 1
+        while line_start_idx > 0 and self.char_data[line_start_idx - 1][2] == cur_y:
+            line_start_idx -= 1
+
+        chars_on_line = n_chars - line_start_idx
+
+        # Count total chars on this line
+        total_on_line = chars_on_line
+        for i in range(n_chars, self.total_chars):
+            if self.char_data[i][2] == cur_y:
+                total_on_line += 1
+            else:
+                break
+
+        if total_on_line == 0:
+            return cur_y, 0
+
+        # Slide completes over the first 40% of the line being typed
+        progress = chars_on_line / max(total_on_line, 1)
+        eased = _ease_out_cubic(min(progress / 0.4, 1.0))
+        x_offset = int(-config.LINE_SLIDE_OFFSET * (1.0 - eased))
+        return cur_y, x_offset
+
+    def _draw_before_label(self, draw: ImageDraw.ImageDraw):
+        """Overlay '\u274c BEFORE' label on the preview panel for before_after type."""
+        label_y = config.PREVIEW_Y + config.PREVIEW_CHROME_H + 3
+        label_h = 26
+        draw.rectangle(
+            [config.PADDING + 2, label_y,
+             config.PADDING + 190, label_y + label_h],
+            fill="#3d1212",
+        )
+        draw.text(
+            (config.PADDING + 96, label_y + label_h // 2),
+            "\u274c  BEFORE",
+            fill="#ff7b72", font=self.chrome_font, anchor="mm",
+        )
+
+    # ──────────────────────────────────────────────────────────
+    #  ANIMATED CODE HIGHLIGHTING  (Phase 9.2)
+    # ──────────────────────────────────────────────────────────
+
+    def _build_code_keyword_index(self):
+        """
+        Build a mapping of identifiers in the code to their line numbers.
+        Used by _get_highlighted_line() to find which line to glow
+        when the narrator speaks a matching keyword.
+        """
+        import re
+        self._keyword_to_lines: dict[str, list[int]] = {}
+        code_lines = self.code.rstrip().split("\n")
+        # Extract identifiers (3+ chars) from each line
+        ident_pattern = re.compile(r"[A-Za-z_]\w{2,}")
+        for line_idx, line in enumerate(code_lines):
+            for match in ident_pattern.finditer(line):
+                word = match.group().lower()
+                if word not in self._keyword_to_lines:
+                    self._keyword_to_lines[word] = []
+                if line_idx not in self._keyword_to_lines[word]:
+                    self._keyword_to_lines[word].append(line_idx)
+
+    def _get_highlighted_line(self, t: float) -> int | None:
+        """
+        Return the 0-based line index that should be highlighted at time t,
+        based on the currently spoken narration word matching a code identifier.
+
+        Returns None if no match is found (default: no special highlight).
+        """
+        if not self.word_timestamps or not self._keyword_to_lines:
+            return None
+
+        # Find the current narration word at time t
+        current_word = None
+        for wt in self.word_timestamps:
+            start = wt.get("start_s", 0) if isinstance(wt, dict) else wt.start_s
+            end = wt.get("end_s", 0) if isinstance(wt, dict) else wt.end_s
+            text = wt.get("text", "") if isinstance(wt, dict) else wt.text
+            if start <= t <= end:
+                current_word = text.lower().strip(".,!?;:'\"()[]{}#")
+                break
+
+        if not current_word or len(current_word) < 3:
+            return None
+
+        # Look up matching code lines
+        matching_lines = self._keyword_to_lines.get(current_word)
+        if matching_lines:
+            return matching_lines[0]
+        return None
+
+    def _draw_line_highlight_glow(
+        self, draw: ImageDraw.ImageDraw, line_idx: int, n_chars: int
+    ):
+        """
+        Draw a glow effect on the specified code line (Phase 9.2).
+        - Semi-transparent highlight background (brighter than default)
+        - Accent-colored vertical strip on the left gutter
+        """
+        # Compute y position for the target line
+        target_y = config.CODE_TOP + line_idx * self.line_height
+
+        # Don't highlight lines not yet typed
+        if n_chars <= 0:
+            return
+        last_visible_y = self.char_data[min(n_chars - 1, self.total_chars - 1)][2]
+        if target_y > last_visible_y:
+            return
+
+        # Background highlight (brighter)
+        hl_color = config.LINE_HIGHLIGHT_ACTIVE
+        draw.rectangle(
+            [config.PADDING + 1, target_y - 2,
+             self.width - config.PADDING - 1, target_y + self.line_height - 4],
+            fill=hl_color,
+        )
+
+        # Accent glow strip on the left
+        accent_color = config.ACCENT_GRADIENT_LEFT
+        draw.rectangle(
+            [config.PADDING + 1, target_y - 2,
+             config.PADDING + 5, target_y + self.line_height - 4],
+            fill=accent_color,
+        )
+
+    # ──────────────────────────────────────────────────────────
     #  PER-FRAME RENDERING
     # ──────────────────────────────────────────────────────────
 
@@ -737,12 +925,31 @@ class FrameRenderer:
         return np.array(frame)
 
     def _render_outro(self, t: float) -> np.ndarray:
-        """Render outro card with fast crossfade."""
+        """Render outro — crossfade then animated subscribe button pulse (Phase 5.8)."""
         elapsed = t - self.outro_start
-        # Quick 0.8s crossfade so creative outro is visible longer
         progress = min(elapsed / 0.8, 1.0)
         alpha = _ease_out_cubic(progress)
         frame = Image.blend(self.base, self.outro, alpha)
+
+        # After crossfade: pulse the Subscribe button per-frame
+        if progress >= 1.0:
+            draw = ImageDraw.Draw(frame)
+            cx = self.width // 2
+            cy = self.height // 2
+            pulse = 1.0 + 0.04 * math.sin(elapsed * 4.0)
+            btn_w = int(360 * pulse)
+            btn_h = int(64 * pulse)
+            btn_x = cx - btn_w // 2
+            btn_y = cy - 20
+            draw.rounded_rectangle(
+                [btn_x, btn_y, btn_x + btn_w, btn_y + btn_h],
+                radius=32, fill="#ff0000",
+            )
+            draw.text(
+                (cx, btn_y + btn_h // 2), "\U0001f514  S U B S C R I B E",
+                fill="#ffffff", font=self.outro_sub_font, anchor="mm",
+            )
+
         return np.array(frame)
 
     def _render_code_phase(self, t: float) -> np.ndarray:
@@ -750,11 +957,17 @@ class FrameRenderer:
         frame = self.base.copy()
         draw = ImageDraw.Draw(frame)
 
+        # ── Subtle background particles (Phase 5.9) ────────
+        self._draw_bg_particles(draw, t)
+
         # ── Top panel: dynamic preview content ────────────
         self._draw_preview_content(draw, t)
 
         # ── Bottom panel: code typing animation ───────────
         n_chars = self._get_visible_chars(t)
+
+        # Per-line slide-in offset (Phase 5.5)
+        slide_line_y, slide_x = self._get_line_slide_offset(n_chars)
 
         # Current line highlight
         if 0 < n_chars <= self.total_chars:
@@ -766,11 +979,18 @@ class FrameRenderer:
                 fill=config.LINE_HIGHLIGHT,
             )
 
-        # Draw visible code characters
+        # Phase 9.2: Animated code highlighting (glow on narration-matched line)
+        if config.ENABLE_LINE_HIGHLIGHT == "1":
+            hl_line = self._get_highlighted_line(t)
+            if hl_line is not None:
+                self._draw_line_highlight_glow(draw, hl_line, n_chars)
+
+        # Draw visible code characters with slide animation on active line
         for i in range(n_chars):
             ch, x, y, color = self.char_data[i]
             if ch.strip():
-                draw.text((x, y), ch, fill=color, font=self.code_font)
+                render_x = x + (slide_x if y == slide_line_y else 0)
+                draw.text((render_x, y), ch, fill=color, font=self.code_font)
 
         # Blinking cursor
         self._draw_cursor(draw, t, n_chars)
@@ -791,18 +1011,19 @@ class FrameRenderer:
         elif self.content_type == "quiz":
             self._draw_preview_quiz(draw, t)
         elif self.content_type == "before_after":
-            pass  # before code is pre-drawn into base image
+            self._draw_before_label(draw)  # overlay BEFORE label (Phase 5.6)
         else:  # tip
             self._draw_preview_tip(draw, t)
 
     def _draw_preview_tip(self, draw: ImageDraw.ImageDraw, t: float):
-        """Draw styled concept card in the preview panel for 'tip' type."""
+        """Draw styled concept card — bobbing emoji, gradient badge, tag chips (Phase 5.6)."""
         cx = self.width // 2
         top = config.PREVIEW_CONTENT_Y
 
-        # Large emoji
+        # Bobbing emoji — gentle up-down oscillation
+        emoji_y = top + 100 + int(5 * math.sin(t * 2.5))
         draw.text(
-            (cx, top + 100), "\U0001f4a1",
+            (cx, emoji_y), "\U0001f4a1",
             fill="#ffd700", font=self.title_font, anchor="mm",
         )
 
@@ -811,25 +1032,43 @@ class FrameRenderer:
         if title:
             self._draw_wrapped_text(
                 draw, title, self.title_sub_font,
-                "#e6edf3", top + 250, max_width=self.width - 200,
+                "#e6edf3", top + 240, max_width=self.width - 160,
             )
 
-        # Language badge
+        # Full-width language badge with accent fill
         lang = self.language.upper()
-        badge_text = f"  {lang}  "
-        bbox = self.chrome_font.getbbox(badge_text)
-        bw = bbox[2] - bbox[0] + 16
-        bh = bbox[3] - bbox[1] + 10
-        bx = cx - bw // 2
-        by = top + 370
+        badge_left = config.PADDING + 20
+        badge_right = self.width - config.PADDING - 20
+        badge_y = top + 355
+        badge_h = 48
         draw.rounded_rectangle(
-            [bx, by, bx + bw, by + bh],
-            radius=10, fill="#30363d",
+            [badge_left, badge_y, badge_right, badge_y + badge_h],
+            radius=24, fill="#1a2744",
         )
         draw.text(
-            (cx, by + bh // 2), badge_text,
-            fill="#58a6ff", font=self.chrome_font, anchor="mm",
+            (cx, badge_y + badge_h // 2), f"  {lang}  ",
+            fill=config.ACCENT_GRADIENT_LEFT, font=self.title_sub_font, anchor="mm",
         )
+
+        # Tag chips from title keywords
+        title_words = [w.strip(".,!?#") for w in title.split() if len(w) > 3][:3]
+        chip_x = config.PADDING + 20
+        chip_y = badge_y + badge_h + 12
+        for word in title_words:
+            cb = self.chrome_font.getbbox(f"  {word}  ")
+            cw = cb[2] - cb[0] + 10
+            ch = cb[3] - cb[1] + 8
+            if chip_x + cw > self.width - config.PADDING - 20:
+                break
+            draw.rounded_rectangle(
+                [chip_x, chip_y, chip_x + cw, chip_y + ch],
+                radius=8, fill="#30363d",
+            )
+            draw.text(
+                (chip_x + cw // 2, chip_y + ch // 2), f"  {word}  ",
+                fill="#8b949e", font=self.chrome_font, anchor="mm",
+            )
+            chip_x += cw + 8
 
     def _draw_preview_output(self, draw: ImageDraw.ImageDraw, t: float):
         """Terminal-style output in preview panel with spinner then line-by-line reveal."""
@@ -873,20 +1112,19 @@ class FrameRenderer:
             )
 
     def _draw_preview_quiz(self, draw: ImageDraw.ImageDraw, t: float):
-        """Quiz challenge/answer in preview panel."""
+        """Quiz challenge with progress bar + slide-up answer reveal (Phase 5.6)."""
         cx = self.width // 2
         top = config.PREVIEW_CONTENT_Y
+        reveal_time = getattr(self, 'output_reveal_time', float('inf'))
 
-        if t < getattr(self, 'output_reveal_time', float('inf')):
-            # Pulsing challenge question
+        if t < reveal_time:
+            # Challenge phase
             draw.text(
-                (cx, top + 100),
-                "What does this",
+                (cx, top + 90), "What does this",
                 fill="#e6edf3", font=self.title_sub_font, anchor="mm",
             )
             draw.text(
-                (cx, top + 150),
-                "code output?",
+                (cx, top + 140), "code output?",
                 fill="#e6edf3", font=self.title_sub_font, anchor="mm",
             )
             # Animated pulsing "?"
@@ -894,17 +1132,39 @@ class FrameRenderer:
             q_size = int(config.TITLE_FONT_SIZE * pulse)
             q_font = ImageFont.truetype(config.FONT_BOLD, min(q_size, 80))
             draw.text(
-                (cx, top + 300), "?",
+                (cx, top + 275), "?",
                 fill="#58a6ff", font=q_font, anchor="mm",
             )
-        else:
-            # Reveal answer
+            # Progress bar — shows typing progress toward reveal
+            bar_left = config.PADDING + 30
+            bar_right = self.width - config.PADDING - 30
+            bar_y = top + 385
+            bar_h = 5
+            draw.rounded_rectangle(
+                [bar_left, bar_y, bar_right, bar_y + bar_h],
+                radius=3, fill="#30363d",
+            )
+            progress = min(t / max(reveal_time, 0.1), 1.0)
+            fill_x = int(bar_left + (bar_right - bar_left) * progress)
+            if fill_x > bar_left + 2:
+                draw.rounded_rectangle(
+                    [bar_left, bar_y, fill_x, bar_y + bar_h],
+                    radius=3, fill=config.ACCENT_GRADIENT_LEFT,
+                )
             draw.text(
-                (cx, top + 60),
-                "\u2705 Answer:",
+                (cx, bar_y + 22), "Answer reveals when typing ends...",
+                fill="#484f58", font=self.chrome_font, anchor="mm",
+            )
+        else:
+            # Reveal phase — slide-up animation
+            elapsed = t - reveal_time
+            slide_offset = int(35 * (1.0 - _ease_out_cubic(min(elapsed / 0.35, 1.0))))
+            reveal_y = top + 60 + slide_offset
+            draw.text(
+                (cx, reveal_y), "\u2705 Answer:",
                 fill="#7ee787", font=self.title_sub_font, anchor="mm",
             )
-            content_y = top + 120
+            content_y = reveal_y + 60
             for i, line in enumerate(getattr(self, 'output_lines', [])):
                 line_y = content_y + i * getattr(self, 'output_line_height', 36)
                 if line_y > config.PREVIEW_BOTTOM - 30:
@@ -942,7 +1202,7 @@ class FrameRenderer:
             return total
 
     def _draw_cursor(self, draw: ImageDraw.ImageDraw, t: float, n_chars: int):
-        """Draw blinking cursor."""
+        """Draw blinking cursor with glow effect."""
         blink_on = int(t * config.CURSOR_BLINK_HZ * 2) % 2 == 0
         if not blink_on:
             return
@@ -955,13 +1215,21 @@ class FrameRenderer:
         else:
             return
 
+        # Soft glow behind cursor (wider, semi-transparent effect via lighter color)
+        cursor_rgb = _hex_to_rgb(config.CURSOR_COLOR)
+        glow_color = _lerp_color(cursor_rgb, _hex_to_rgb(config.CODE_BG), 0.7)
         draw.rectangle(
-            [cx, cy + 2, cx + 3, cy + self.line_height - 6],
+            [cx - 3, cy, cx + 6, cy + self.line_height - 2],
+            fill=glow_color,
+        )
+        # Main cursor bar
+        draw.rectangle(
+            [cx, cy + 2, cx + 2, cy + self.line_height - 4],
             fill=config.CURSOR_COLOR,
         )
 
     def _draw_subtitles(self, draw: ImageDraw.ImageDraw, t: float):
-        """Draw karaoke-style subtitles."""
+        """Draw karaoke subtitles — adaptive font, multi-line, tighter timing (Phase 5.7)."""
         active_group = None
         active_word_idx = -1
 
@@ -970,7 +1238,7 @@ class FrameRenderer:
                 continue
             gs = group[0]["start_s"]
             ge = group[-1]["end_s"]
-            if gs - 0.1 <= t <= ge + 0.5:
+            if gs - 0.1 <= t <= ge + 0.3:     # tightened: 0.5 → 0.3
                 active_group = group
                 for i, wt in enumerate(group):
                     if wt["start_s"] - 0.05 <= t <= wt["end_s"] + 0.15:
@@ -982,27 +1250,51 @@ class FrameRenderer:
             return
 
         words = [wt["text"] for wt in active_group]
+
+        # Adaptive font — use smaller size for long groups
         full_text = "  ".join(words)
-        bbox = self.subtitle_font.getbbox(full_text)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        text_x = (self.width - text_w) // 2
-        text_y = config.SUBTITLE_Y
+        sfont = self.subtitle_font_small if len(full_text) > 24 else self.subtitle_font
 
-        pad_x, pad_y = 28, 18
-        draw.rounded_rectangle(
-            [text_x - pad_x, text_y - pad_y,
-             text_x + text_w + pad_x, text_y + text_h + pad_y],
-            radius=16, fill=config.SUBTITLE_BG_COLOR,
-        )
+        # Multi-line split: max 4 words per line
+        if len(words) > 4:
+            line1_words = words[:4]
+            line2_words = words[4:]
+        else:
+            line1_words = words
+            line2_words = []
 
-        space_w = self.subtitle_font.getlength("  ")
-        word_x = float(text_x)
-        for i, word in enumerate(words):
-            color = (
-                config.SUBTITLE_ACTIVE_COLOR
-                if i == active_word_idx
-                else config.SUBTITLE_TEXT_COLOR
+        def _render_line(line_words: list, base_y: int, word_offset: int):
+            if not line_words:
+                return
+            line_text = "  ".join(line_words)
+            bbox = sfont.getbbox(line_text)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
+            tx = (self.width - tw) // 2
+            pad_x, pad_y = 24, 14
+            draw.rounded_rectangle(
+                [tx - pad_x, base_y - pad_y,
+                 tx + tw + pad_x, base_y + th + pad_y],
+                radius=14, fill=config.SUBTITLE_BG_COLOR,
             )
-            draw.text((int(word_x), text_y), word, fill=color, font=self.subtitle_font)
-            word_x += self.subtitle_font.getlength(word) + space_w
+            space_w = sfont.getlength("  ")
+            wx = float(tx)
+            for j, word in enumerate(line_words):
+                gidx = j + word_offset
+                color = (
+                    config.SUBTITLE_ACTIVE_COLOR
+                    if gidx == active_word_idx
+                    else config.SUBTITLE_TEXT_COLOR
+                )
+                draw.text((int(wx) + 2, base_y + 2), word, fill="#000000", font=sfont)
+                draw.text((int(wx), base_y), word, fill=color, font=sfont)
+                wx += sfont.getlength(word) + space_w
+
+        bh = sfont.getbbox("Mg")[3] - sfont.getbbox("Mg")[1]
+        line_spacing = bh + 36
+
+        if line2_words:
+            _render_line(line1_words, config.SUBTITLE_Y - line_spacing, 0)
+            _render_line(line2_words, config.SUBTITLE_Y, len(line1_words))
+        else:
+            _render_line(line1_words, config.SUBTITLE_Y, 0)

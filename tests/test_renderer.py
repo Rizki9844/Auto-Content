@@ -141,7 +141,7 @@ class TestFrameRendererInit:
 
     def test_output_demo_reveal_time(self):
         r = _make_renderer(
-            content_type="output_demo",
+            content_type="quiz",
             code_output="hello world",
         )
         assert hasattr(r, 'output_reveal_time')
@@ -184,7 +184,7 @@ class TestFrameRendering:
 
     def test_output_demo_renders(self):
         r = _make_renderer(
-            content_type="output_demo",
+            content_type="quiz",
             code="print('hello')",
             code_output="hello",
         )

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 style="margin-bottom: 24px;">Videos ({{ total }})</h1>
+
+<form method="get" action="/videos">
+    <input class="search" type="text" name="q" placeholder="Search videos..."
+           value="{{ search }}">
+</form>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Language</th>
+                <th>Type</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in videos %}
+            <tr>
+                <td>{{ v.get('title', 'Untitled')[:60] }}</td>
+                <td>{{ v.get('language', '?') }}</td>
+                <td>{{ v.get('content_type', 'tip') }}</td>
+                <td style="color: var(--muted);">
+                    {{ v.get('created_at', '').strftime('%Y-%m-%d') if v.get('created_at') else '-' }}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="color: var(--muted);">No videos found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}<a href="?page={{ page - 1 }}&q={{ search }}">← Prev</a>{% endif %}
+    <span style="color: var(--muted); padding: 4px;">Page {{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}<a href="?page={{ page + 1 }}&q={{ search }}">Next →</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

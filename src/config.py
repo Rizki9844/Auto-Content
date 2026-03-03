@@ -60,7 +60,7 @@ PREVIEW_RUNNING_COLOR = "#58a6ff"     # spinner + "Running..." text
 # ══════════════════════════════════════════════════════════════
 #  SPLIT-SCREEN LAYOUT (1080×1920 canvas)
 # ══════════════════════════════════════════════════════════════
-PADDING = 50
+PADDING = 40
 
 # ── Preview panel (top) — output / demo / concept ────────────
 PREVIEW_Y = 50
@@ -81,17 +81,17 @@ LINE_NUM_RIGHT_X = PADDING + 52             # 102
 GUTTER_X = PADDING + 62                     # 112
 
 # ── Subtitles & watermark ────────────────────────────────────
-SUBTITLE_Y = 1520
+SUBTITLE_Y = 1480
 WATERMARK_Y = 1840
 
 
 # ══════════════════════════════════════════════════════════════
 #  FONT SIZES
 # ══════════════════════════════════════════════════════════════
-CODE_FONT_SIZE = 24
+CODE_FONT_SIZE = 26
 LINE_NUM_FONT_SIZE = 20
-SUBTITLE_FONT_SIZE = 42
-WATERMARK_FONT_SIZE = 20
+SUBTITLE_FONT_SIZE = 48
+WATERMARK_FONT_SIZE = 16
 CHROME_FONT_SIZE = 15
 TITLE_FONT_SIZE = 48
 TITLE_SUB_FONT_SIZE = 28
@@ -106,6 +106,7 @@ PREVIEW_LINE_NUM_SIZE = 18
 # ══════════════════════════════════════════════════════════════
 TYPING_CPS = 18            # characters per second (slower = more readable)
 CURSOR_BLINK_HZ = 3        # blinks per second
+LINE_SLIDE_OFFSET = 60     # pixels slide-in from left for each new line (Phase 5.5)
 TYPING_DELAY_START = 0.3   # seconds of pause before typing starts
 TYPING_DELAY_END = 1.0     # seconds of pause after typing finishes
 
@@ -138,7 +139,7 @@ OUTRO_CTA_COLOR = "#ffd700"          # gold "Subscribe" text
 # ══════════════════════════════════════════════════════════════
 #  CONTENT TYPES
 # ══════════════════════════════════════════════════════════════
-CONTENT_TYPES = ["tip", "output_demo", "quiz", "before_after"]
+CONTENT_TYPES = ["tip", "quiz", "before_after"]
 
 
 # ══════════════════════════════════════════════════════════════
@@ -160,16 +161,8 @@ YOUTUBE_CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID", "")
 YOUTUBE_CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET", "")
 YOUTUBE_REFRESH_TOKEN = os.environ.get("YOUTUBE_REFRESH_TOKEN", "")
 
-# ─── TikTok Content Posting API ──────────────────────────────
-TIKTOK_ACCESS_TOKEN = os.environ.get("TIKTOK_ACCESS_TOKEN", "")
-
-# ─── Instagram Graph API ─────────────────────────────────────
-INSTAGRAM_ACCESS_TOKEN = os.environ.get("INSTAGRAM_ACCESS_TOKEN", "")
-INSTAGRAM_ACCOUNT_ID = os.environ.get("INSTAGRAM_ACCOUNT_ID", "")
-
-# ─── Multi-platform upload targets ───────────────────────────
-# Comma-separated: "youtube", "tiktok", "instagram"
-UPLOAD_TARGETS = os.environ.get("UPLOAD_TARGETS", "youtube")
+# ─── Upload target (YouTube only) ─────────────────────────────
+UPLOAD_TARGETS = "youtube"
 
 
 # ══════════════════════════════════════════════════════════════
@@ -200,8 +193,6 @@ ENABLE_THUMBNAILS = os.environ.get("ENABLE_THUMBNAILS", "0")
 # Comma-separated dotted module paths for custom plugins
 # Example: PLUGINS=mypackage.social,mypackage.analytics
 PLUGINS = os.environ.get("PLUGINS", "")
-# Discord webhook URL for built-in Discord plugin
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -212,6 +203,124 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 
 # ══════════════════════════════════════════════════════════════
+#  TRENDING TOPICS  (Phase 6.1)
+# ══════════════════════════════════════════════════════════════
+# Set to "1" to inject trending topic hints into the LLM prompt.
+# Requires optional dep: pytrends  (pip install pytrends)
+# YOUTUBE_API_KEY is used for YouTube Trending (same key as upload or a
+# separate browser-API key with no OAuth required).
+ENABLE_TRENDING = os.environ.get("ENABLE_TRENDING", "0")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
+
+
+# ══════════════════════════════════════════════════════════════
+#  YOUTUBE ANALYTICS  (Phase 6.2)
+# ══════════════════════════════════════════════════════════════
+# Set to "1" to enable analytics feedback loop.
+# YOUTUBE_CHANNEL_ID is required for AVD + CTR via Analytics API v2.
+# (Re-auth with yt-analytics.readonly scope via scripts/auth_youtube.py if
+#  those metrics are needed; views/likes work with existing upload scope.)
+ENABLE_YT_ANALYTICS = os.environ.get("ENABLE_YT_ANALYTICS", "0")
+YOUTUBE_CHANNEL_ID  = os.environ.get("YOUTUBE_CHANNEL_ID", "")
+
+
+# ══════════════════════════════════════════════════════════════
+#  MULTI-LANGUAGE CONTENT  (Phase 6.3)
+# ══════════════════════════════════════════════════════════════
+# Set CONTENT_LANGUAGE="id" to switch narration + TTS to Bahasa Indonesia.
+# Supported values: "en" (default) | "id"
+CONTENT_LANGUAGE = os.environ.get("CONTENT_LANGUAGE", "en")
+
+# Indonesian TTS voice used automatically when CONTENT_LANGUAGE="id".
+# Override via TTS_VOICE_ID env var if a different ID voice is preferred.
+TTS_VOICE_ID = os.environ.get("TTS_VOICE_ID", "id-ID-GadisNeural")
+
+
+# ══════════════════════════════════════════════════════════════
+#  PROMPT A/B TESTING  (Phase 6.5)
+# ══════════════════════════════════════════════════════════════
+# "A" = default prompt | "B" = alternative prompt | "auto" = day-based rotation
+PROMPT_VARIANT = os.environ.get("PROMPT_VARIANT", "A")
+
+
+# ══════════════════════════════════════════════════════════════
+#  VOICE & TONE VARIETY  (Phase 6.7)
+# ══════════════════════════════════════════════════════════════
+# Values: "energetic" | "calm" | "curious" | "dramatic" | "auto"
+# "auto" rotates daily across all 4 tones.
+NARRATOR_TONE = os.environ.get("NARRATOR_TONE", "energetic")
+
+
+# ══════════════════════════════════════════════════════════════
 #  BRANDING
 # ══════════════════════════════════════════════════════════════
 CHANNEL_NAME = os.environ.get("CHANNEL_NAME", "@DevInSeconds")
+CHANNEL_URL = os.environ.get(
+    "CHANNEL_URL", "https://www.youtube.com/@DevInSeconds"
+)
+
+
+# ══════════════════════════════════════════════════════════════
+#  GROWTH ENGINE  (Phase 7)
+# ══════════════════════════════════════════════════════════════
+# 7.1 — SEO-optimized YouTube descriptions
+ENABLE_SEO_DESCRIPTION = os.environ.get("ENABLE_SEO_DESCRIPTION", "1")
+
+# 7.2 — Auto-post a pinned CTA comment after upload
+ENABLE_AUTO_COMMENT = os.environ.get("ENABLE_AUTO_COMMENT", "0")
+
+# 7.3 — Auto-manage playlists per language / series
+ENABLE_PLAYLISTS = os.environ.get("ENABLE_PLAYLISTS", "0")
+
+# 7.4 — Append end-screen CTA to video description
+ENABLE_END_SCREEN = os.environ.get("ENABLE_END_SCREEN", "0")
+
+# 7.5 — Use analytics-based upload time optimization
+ENABLE_SMART_SCHEDULE = os.environ.get("ENABLE_SMART_SCHEDULE", "0")
+
+
+# ══════════════════════════════════════════════════════════════
+#  PRODUCTION RELIABILITY  (Phase 8)
+# ══════════════════════════════════════════════════════════════
+
+# 8.1 — Gemini fallback model when primary is unavailable
+GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-1.5-flash")
+
+# 8.2 — Archive old records after N days
+ARCHIVE_DAYS = int(os.environ.get("ARCHIVE_DAYS", "90"))
+# MongoDB storage alert threshold in MB (80% of free tier 512MB)
+MONGO_STORAGE_ALERT_MB = int(os.environ.get("MONGO_STORAGE_ALERT_MB", "400"))
+
+# 8.4 — Graceful pipeline timeouts (seconds)
+STEP_TIMEOUT_S = int(os.environ.get("STEP_TIMEOUT_S", "120"))
+RENDER_TIMEOUT_S = int(os.environ.get("RENDER_TIMEOUT_S", "300"))
+
+# 8.5 — Environment: "production" or "staging"
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
+
+
+# ══════════════════════════════════════════════════════════════
+#  ADVANCED FEATURES  (Phase 9)
+# ══════════════════════════════════════════════════════════════
+
+# 9.1 — Background music (opt-in)
+ENABLE_BGMUSIC = os.environ.get("ENABLE_BGMUSIC", "0")
+BGMUSIC_VOLUME = float(os.environ.get("BGMUSIC_VOLUME", "0.07"))
+MUSIC_DIR = ASSETS_DIR / "music"
+
+# 9.2 — Animated code highlighting
+ENABLE_LINE_HIGHLIGHT = os.environ.get("ENABLE_LINE_HIGHLIGHT", "1")
+LINE_HIGHLIGHT_ACTIVE = os.environ.get("LINE_HIGHLIGHT_ACTIVE", "#1f2937")
+
+# 9.3 — Multi-channel YouTube support
+# JSON list of channel configs: [{"name":"en","client_id":"...","client_secret":"...","refresh_token":"..."}]
+YOUTUBE_CHANNELS = os.environ.get("YOUTUBE_CHANNELS", "")
+
+# 9.4 — Dashboard
+DASHBOARD_PORT = int(os.environ.get("DASHBOARD_PORT", "5050"))
+DASHBOARD_SECRET_KEY = os.environ.get("DASHBOARD_SECRET_KEY", "dev-secret-change-me")
+
+# 9.5 — AI-generated thumbnail v2
+# "pillow" = Phase 4.6 generator | "ai" = AI background + Pillow overlay
+THUMBNAIL_STYLE = os.environ.get("THUMBNAIL_STYLE", "pillow")
+STABILITY_API_KEY = os.environ.get("STABILITY_API_KEY", "")

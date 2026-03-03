@@ -1,7 +1,7 @@
 """
 Video assembly module — moviepy.
 Combines rendered frames + TTS audio into a final MP4 (H.264 + AAC).
-Output format: 1080×1920 @ 30fps, optimized for YouTube Shorts / TikTok.
+Output format: 1080×1920 @ 30fps, optimized for YouTube Shorts.
 
 Phase 3.2: verify_video() checks file size, duration, and codec after render.
 """
@@ -34,6 +34,7 @@ def create_video(
     code_output: str | None = None,
     code_before: str | None = None,
     title: str = "",
+    series_part: int = 0,
 ) -> str:
     """
     Render a complete video from code + audio.
@@ -49,6 +50,7 @@ def create_video(
         code_output: Code execution output or quiz answer to display.
         code_before: "Before" code for before_after content type.
         title: Video title for intro card.
+        series_part: Episode number in a series; 0 means standalone (Phase 6.4).
 
     Returns:
         Path to the rendered video file.
@@ -81,6 +83,7 @@ def create_video(
         code_output=code_output,
         code_before=code_before,
         title=title,
+        series_part=series_part,
     )
 
     # ── Create video clip from frame function ─────────────────
@@ -106,12 +109,14 @@ def create_video(
         fps=config.VIDEO_FPS,
         codec="libx264",
         audio_codec="aac",
-        preset="fast",
+        preset="medium",
         threads=2,
         ffmpeg_params=[
-            "-crf", "20",           # High quality (lower = better, 0–51)
-            "-pix_fmt", "yuv420p",  # Maximum compatibility
+            "-crf", "18",               # Higher quality (was 20)
+            "-pix_fmt", "yuv420p",      # Maximum compatibility
             "-movflags", "+faststart",  # Web-optimized (progressive download)
+            "-tune", "stillimage",      # Optimize for mostly-static code screens
+            "-b:a", "192k",             # Better TTS audio quality
         ],
         logger=None,  # Suppress moviepy progress bar in CI
     )

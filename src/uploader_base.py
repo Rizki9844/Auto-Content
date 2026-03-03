@@ -1,11 +1,10 @@
 """
 Abstract base for all platform uploaders.
 
-Every concrete uploader (YouTube, TikTok, Instagram) subclasses
-``UploaderBase`` and implements the three required methods.
+Every concrete uploader subclasses ``UploaderBase`` and implements
+the three required methods.
 
-The ``get_uploaders()`` factory reads ``UPLOAD_TARGETS`` from config
-and returns only the configured / available instances.
+The ``get_uploaders()`` factory returns configured uploader instances.
 """
 from __future__ import annotations
 
@@ -118,8 +117,6 @@ def _discover_uploaders() -> None:
 
     for mod_name in (
         "src.uploader_youtube",
-        "src.uploader_tiktok",
-        "src.uploader_instagram",
     ):
         try:
             importlib.import_module(mod_name)

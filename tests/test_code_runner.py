@@ -250,6 +250,8 @@ class TestGetOutputForContent:
         assert get_output_for_content(sample_content) is None
 
     def test_output_demo_prefers_expected(self, sample_content_output_demo):
+        # Fixture is now type=tip; override to test output_demo code path
+        sample_content_output_demo["content_type"] = "output_demo"
         result = get_output_for_content(sample_content_output_demo)
         assert result == "*******Python*******"
 
@@ -262,6 +264,7 @@ class TestGetOutputForContent:
 
     def test_output_demo_empty_expected_no_exec(self, sample_content_output_demo):
         """When expected_output is empty, fallback to execution (or None)."""
+        sample_content_output_demo["content_type"] = "output_demo"
         sample_content_output_demo["expected_output"] = ""
         # On Windows test env, python3 may not be available → graceful None
         result = get_output_for_content(sample_content_output_demo)

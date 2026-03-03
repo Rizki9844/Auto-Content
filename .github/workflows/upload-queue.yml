@@ -32,18 +32,12 @@ jobs:
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-      TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
-      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-      INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-      UPLOAD_TARGETS: ${{ vars.UPLOAD_TARGETS || 'youtube' }}
-      CHANNEL_NAME: ${{ vars.CHANNEL_NAME || '@DevInSeconds' }}
+      CHANNEL_NAME: '@DevInSeconds'
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      ACTIVE_THEME: ${{ vars.ACTIVE_THEME || 'github_dark' }}
-      AUTO_ROTATE_THEMES: ${{ vars.AUTO_ROTATE_THEMES || '0' }}
-      ENABLE_THUMBNAILS: ${{ vars.ENABLE_THUMBNAILS || '0' }}
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      PLUGINS: ${{ vars.PLUGINS || '' }}
+      ACTIVE_THEME: github_dark
+      AUTO_ROTATE_THEMES: '0'
+      ENABLE_THUMBNAILS: '0'
 
     steps:
       - name: Checkout repository

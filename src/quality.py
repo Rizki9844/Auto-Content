@@ -20,7 +20,7 @@ QUALITY_THRESHOLD = 50  # Minimum acceptable score (0–100)
 
 # Ideal ranges (min, max) for scoring dimensions
 _SCRIPT_WORD_RANGE = (40, 80)
-_CODE_LINE_RANGE = (3, 15)
+_CODE_LINE_RANGE = (3, 10)
 _HASHTAG_RANGE = (5, 8)
 _CODE_CHAR_MAX_PER_LINE = 60  # Lines longer than this are penalized
 

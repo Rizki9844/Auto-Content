@@ -1,0 +1,162 @@
+[
+  {
+    "topic": "JavaScript Optional Chaining",
+    "hook": "Stop writing nested if checks for null",
+    "code_skeleton": "const city = user?.address?.city ?? 'Unknown';\n// No more 'Cannot read property of undefined'",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "JavaScript Nullish Coalescing",
+    "hook": "?? is NOT the same as ||",
+    "code_skeleton": "const count = 0;\nconsole.log(count || 10);  // 10 (wrong!)\nconsole.log(count ?? 10);  // 0  (correct!)",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "gotcha"
+  },
+  {
+    "topic": "JavaScript Destructuring Defaults",
+    "hook": "Set fallback values while destructuring",
+    "code_skeleton": "const { name = 'Guest', role = 'user' } = config;\n\nconst [first = 0, second = 0] = [];\n// first=0, second=0",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "JavaScript Promise.allSettled",
+    "hook": "Wait for ALL promises even if some fail",
+    "code_skeleton": "const results = await Promise.allSettled([\n  fetchUser(1),\n  fetchUser(2),  // might fail\n  fetchUser(3),\n]);\n// Every result has .status and .value/.reason",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "async"
+  },
+  {
+    "topic": "JavaScript structuredClone",
+    "hook": "Deep clone objects without hacks",
+    "code_skeleton": "const original = { a: 1, nested: { b: 2 } };\nconst clone = structuredClone(original);\nclone.nested.b = 99;\n// original.nested.b is still 2!",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "stdlib"
+  },
+  {
+    "topic": "JavaScript Array.at() Negative Index",
+    "hook": "Get the last element without .length",
+    "code_skeleton": "const arr = ['a', 'b', 'c', 'd'];\n\narr.at(-1);  // 'd'\narr.at(-2);  // 'c'\narr.at(0);   // 'a'",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "JavaScript Logical Assignment",
+    "hook": "||=, &&=, ??= — assign smarter",
+    "code_skeleton": "let user = { name: null, role: 'admin' };\n\nuser.name ??= 'Guest';   // 'Guest' (was null)\nuser.role ||= 'user';    // 'admin' (truthy, unchanged)",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "JavaScript AbortController",
+    "hook": "Cancel fetch requests properly",
+    "code_skeleton": "const controller = new AbortController();\n\nfetch('/api', { signal: controller.signal })\n  .catch(e => console.log('Aborted'));\n\n// Cancel after 5 seconds\nsetTimeout(() => controller.abort(), 5000);",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "api"
+  },
+  {
+    "topic": "JavaScript Map vs Object",
+    "hook": "When to use Map instead of plain objects",
+    "code_skeleton": "const map = new Map();\nmap.set(42, 'answer');     // any key type!\nmap.set({id: 1}, 'obj');   // objects as keys!\n\nmap.size;  // 2\nfor (const [k, v] of map) { ... }",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "patterns"
+  },
+  {
+    "topic": "JavaScript Proxy for Validation",
+    "hook": "Auto-validate object properties on set",
+    "code_skeleton": "const validated = new Proxy({}, {\n  set(target, prop, value) {\n    if (prop === 'age' && value < 0)\n      throw new Error('Invalid age');\n    target[prop] = value;\n    return true;\n  }\n});",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "patterns"
+  },
+  {
+    "topic": "TypeScript Utility Types",
+    "hook": "Partial, Pick, Omit — stop rewriting interfaces",
+    "code_skeleton": "interface User {\n  id: number;\n  name: string;\n  email: string;\n}\n\ntype UpdateUser = Partial<User>;\ntype UserPreview = Pick<User, 'id' | 'name'>;\ntype CreateUser = Omit<User, 'id'>;",
+    "language": "TypeScript",
+    "content_type": "tip",
+    "category": "typing"
+  },
+  {
+    "topic": "TypeScript const Assertion",
+    "hook": "Make literal types from objects",
+    "code_skeleton": "const COLORS = {\n  red: '#ff0000',\n  blue: '#0000ff',\n} as const;\n\ntype Color = typeof COLORS[keyof typeof COLORS];\n// '#ff0000' | '#0000ff' — not just string!",
+    "language": "TypeScript",
+    "content_type": "tip",
+    "category": "typing"
+  },
+  {
+    "topic": "TypeScript satisfies Operator",
+    "hook": "Validate types without widening them",
+    "code_skeleton": "type Config = Record<string, string | number>;\n\nconst config = {\n  port: 3000,\n  host: 'localhost',\n} satisfies Config;\n\n// config.port is STILL number, not string|number",
+    "language": "TypeScript",
+    "content_type": "tip",
+    "category": "typing"
+  },
+  {
+    "topic": "JavaScript Top-level await",
+    "hook": "Use await outside async functions",
+    "code_skeleton": "// In ES modules (.mjs or type:module)\nconst data = await fetch('/api').then(r => r.json());\nconsole.log(data);\n// No wrapper function needed!",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "async"
+  },
+  {
+    "topic": "JavaScript Object.groupBy",
+    "hook": "Group array items by key — built-in!",
+    "code_skeleton": "const items = [\n  { name: 'apple', type: 'fruit' },\n  { name: 'carrot', type: 'veggie' },\n  { name: 'banana', type: 'fruit' },\n];\n\nObject.groupBy(items, i => i.type);\n// { fruit: [...], veggie: [...] }",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "JavaScript WeakRef",
+    "hook": "Reference objects without preventing garbage collection",
+    "code_skeleton": "let bigData = { huge: new Array(1_000_000) };\nconst ref = new WeakRef(bigData);\n\nbigData = null; // can be GC'd now\n\nconst data = ref.deref(); // undefined after GC",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "performance"
+  },
+  {
+    "topic": "JavaScript Iterator Protocol",
+    "hook": "Make any object iterable with for...of",
+    "code_skeleton": "const range = {\n  from: 1, to: 5,\n  [Symbol.iterator]() {\n    let cur = this.from;\n    return {\n      next: () => cur <= this.to\n        ? { value: cur++, done: false }\n        : { done: true }\n    };\n  }\n};\nfor (const n of range) console.log(n);",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "patterns"
+  },
+  {
+    "topic": "TypeScript Discriminated Unions",
+    "hook": "Type-safe handling of different shapes",
+    "code_skeleton": "type Shape =\n  | { kind: 'circle'; radius: number }\n  | { kind: 'rect'; w: number; h: number };\n\nfunction area(s: Shape) {\n  switch (s.kind) {\n    case 'circle': return Math.PI * s.radius ** 2;\n    case 'rect':   return s.w * s.h;\n  }\n}",
+    "language": "TypeScript",
+    "content_type": "tip",
+    "category": "typing"
+  },
+  {
+    "topic": "JavaScript Error Cause",
+    "hook": "Chain errors with context in ES2022",
+    "code_skeleton": "try {\n  await db.connect();\n} catch (err) {\n  throw new Error('DB init failed', {\n    cause: err  // original error preserved!\n  });\n}",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "error_handling"
+  },
+  {
+    "topic": "JavaScript Array.findLast",
+    "hook": "Find from the end without reversing",
+    "code_skeleton": "const nums = [1, 5, 3, 8, 2, 7];\n\nnums.findLast(n => n > 4);       // 7\nnums.findLastIndex(n => n > 4);  // 5",
+    "language": "JavaScript",
+    "content_type": "tip",
+    "category": "syntax"
+  }
+]

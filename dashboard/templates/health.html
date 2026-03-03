@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 style="margin-bottom: 24px;">System Health</h1>
+
+{% if not health %}
+<div class="card">
+    <p style="color: var(--muted);">Unable to fetch health data. Check MongoDB connection.</p>
+</div>
+{% else %}
+
+<div class="grid">
+    {% if health.get('stale_queue') %}
+    <div class="card">
+        <h2>Stale Queue Items</h2>
+        {% set stale = health['stale_queue'].get('stale_count', 0) %}
+        <div class="stat {% if stale > 0 %}red{% else %}green{% endif %}">{{ stale }}</div>
+        <p style="color: var(--muted); font-size: 12px;">Items pending > 24h</p>
+    </div>
+    {% endif %}
+
+    {% if health.get('quota_recovery') %}
+    <div class="card">
+        <h2>YouTube Quota</h2>
+        {% if health['quota_recovery'].get('quota_available') %}
+            <div class="stat green">OK</div>
+        {% else %}
+            <div class="stat red">Exhausted</div>
+            <p style="color: var(--muted); font-size: 12px;">
+                Resets: {{ health['quota_recovery'].get('resets_at', '?') }}
+            </p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% if health.get('errors') %}
+<div class="card">
+    <h2>Errors</h2>
+    {% for err in health['errors'] %}
+    <p style="color: var(--red);">• {{ err }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

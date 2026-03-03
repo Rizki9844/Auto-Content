@@ -39,11 +39,11 @@ def sample_content():
 
 @pytest.fixture
 def sample_content_output_demo():
-    """Content dict for output_demo type."""
+    """Content dict for output_demo type (kept for code_runner tests)."""
     return {
         "title": "Python F-String Trick #Shorts",
         "script": (
-            "Check this out — Python f-strings can do way more than simple variable insertion. "
+            "Check this out \u2014 Python f-strings can do way more than simple variable insertion. "
             "You can put expressions, method calls, and even format specs right inside the braces. "
             "Watch what happens when we use an f-string to center-align text with padding characters. "
             "This is super useful for building CLI tools and formatted reports."
@@ -51,7 +51,7 @@ def sample_content_output_demo():
         "code": "name = 'Python'\nprint(f'{name:*^20}')",
         "language": "python",
         "hashtags": ["#Python", "#FString", "#CodingTips", "#Shorts", "#Dev"],
-        "content_type": "output_demo",
+        "content_type": "tip",
         "expected_output": "*******Python*******",
         "quiz_answer": "",
         "code_before": "",

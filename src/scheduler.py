@@ -37,6 +37,33 @@ PEAK_SLOTS_UTC: list[tuple[int, int]] = [
     (0, 0),    # 7 PM EST — prime time
 ]
 
+
+def get_optimized_peak_slots() -> list[tuple[int, int]]:
+    """
+    Return the best upload time slots, using analytics data when available.
+
+    If ``config.ENABLE_SMART_SCHEDULE == "1"`` and enough historical data
+    exists (via Phase 7.5 ``get_best_upload_times``), returns analytics-
+    optimized slots.  Otherwise falls back to the static ``PEAK_SLOTS_UTC``.
+
+    Returns:
+        List of ``(hour, minute)`` tuples.
+    """
+    from src import config
+    if config.ENABLE_SMART_SCHEDULE != "1":
+        return PEAK_SLOTS_UTC
+
+    try:
+        from src.yt_analytics import get_best_upload_times
+        best = get_best_upload_times(top_n=3, min_samples=3)
+        if best and len(best) >= 2:
+            logger.info(f"Using analytics-optimized slots: {best}")
+            return best
+    except Exception as exc:
+        logger.debug(f"Smart schedule fallback to defaults: {exc}")
+
+    return PEAK_SLOTS_UTC
+
 # ── Job status constants ───────────────────────────────────────
 STATUS_PENDING   = "pending"
 STATUS_UPLOADING = "uploading"
@@ -108,9 +135,10 @@ def next_available_slots(n: int, after: datetime | None = None) -> list[datetime
     slots: list[datetime] = []
     cursor = now
     max_iterations = 365 * len(PEAK_SLOTS_UTC)  # safety upper-bound
+    active_slots = get_optimized_peak_slots()
 
     for _ in range(max_iterations):
-        for hour, minute in PEAK_SLOTS_UTC:
+        for hour, minute in active_slots:
             candidate = _slot_datetime(cursor, hour, minute)
             if candidate <= now:
                 candidate += timedelta(days=1)

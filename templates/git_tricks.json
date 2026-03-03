@@ -1,0 +1,82 @@
+[
+  {
+    "topic": "Git Interactive Rebase",
+    "hook": "Clean up messy commits before pushing",
+    "code_skeleton": "git rebase -i HEAD~3\n# In editor:\n# pick abc1234 Add feature\n# squash def5678 Fix typo\n# drop ghi9012 WIP commit",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "workflow"
+  },
+  {
+    "topic": "Git Bisect for Bug Hunting",
+    "hook": "Find the exact commit that broke everything",
+    "code_skeleton": "git bisect start\ngit bisect bad          # current is broken\ngit bisect good v1.0    # this version worked\n# Git checks out middle commit\n# Test it, then: git bisect good/bad\n# Repeat until found!",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "debugging"
+  },
+  {
+    "topic": "Git Stash with Message",
+    "hook": "Save work in progress with context",
+    "code_skeleton": "git stash push -m 'WIP: auth refactor'\ngit stash push -m 'WIP: new API endpoint'\n\ngit stash list\n# stash@{0}: WIP: new API endpoint\n# stash@{1}: WIP: auth refactor\n\ngit stash pop stash@{1}  # restore specific stash",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "workflow"
+  },
+  {
+    "topic": "Git Worktree",
+    "hook": "Work on two branches simultaneously",
+    "code_skeleton": "git worktree add ../hotfix hotfix-branch\n# Now you have two working directories!\n# Main repo on 'main', ../hotfix on 'hotfix-branch'\n\ncd ../hotfix\n# Make fixes here without stashing main work\n\ngit worktree remove ../hotfix  # cleanup",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "workflow"
+  },
+  {
+    "topic": "Git Reflog Recovery",
+    "hook": "Undo almost anything — even hard resets",
+    "code_skeleton": "# Accidentally ran git reset --hard?\ngit reflog\n# abc1234 HEAD@{0}: reset: moving to HEAD~3\n# def5678 HEAD@{1}: commit: important work\n\ngit reset --hard def5678  # restored!",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "recovery"
+  },
+  {
+    "topic": "Git Cherry-Pick",
+    "hook": "Grab specific commits from other branches",
+    "code_skeleton": "# On main branch, grab one commit from feature:\ngit cherry-pick abc1234\n\n# Grab a range:\ngit cherry-pick abc1234..def5678\n\n# Without committing (just stage changes):\ngit cherry-pick --no-commit abc1234",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "workflow"
+  },
+  {
+    "topic": "Git Blame with Ignore",
+    "hook": "Skip formatting commits in blame",
+    "code_skeleton": "# Create .git-blame-ignore-revs\necho 'abc1234' >> .git-blame-ignore-revs\n\n# Use it:\ngit blame --ignore-revs-file .git-blame-ignore-revs file.py\n\n# Set globally:\ngit config blame.ignoreRevsFile .git-blame-ignore-revs",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "debugging"
+  },
+  {
+    "topic": "Git Patch Workflow",
+    "hook": "Share changes without pushing to remote",
+    "code_skeleton": "# Create a patch from last 2 commits:\ngit format-patch -2\n\n# Apply patches:\ngit am 0001-fix-bug.patch\n\n# Or from unstaged changes:\ngit diff > changes.patch\ngit apply changes.patch",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "workflow"
+  },
+  {
+    "topic": "Git Log Power Search",
+    "hook": "Find commits by content, not just message",
+    "code_skeleton": "# Search commit CONTENTS for a string:\ngit log -S 'TODO' --oneline\n\n# Search with regex:\ngit log -G 'def\\s+process' --oneline\n\n# Filter by author + date:\ngit log --author='alice' --since='2024-01-01' --oneline",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "debugging"
+  },
+  {
+    "topic": "Git Aliases for Speed",
+    "hook": "Type git commands 10x faster",
+    "code_skeleton": "git config --global alias.co checkout\ngit config --global alias.br branch\ngit config --global alias.st 'status -sb'\ngit config --global alias.lg 'log --oneline --graph --all'\ngit config --global alias.undo 'reset HEAD~1 --mixed'\n\n# Usage: git lg, git undo, git st",
+    "language": "Git",
+    "content_type": "tip",
+    "category": "workflow"
+  }
+]

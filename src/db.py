@@ -104,6 +104,13 @@ def save_record(data: dict) -> str | None:
             "status": data.get("status", "success"),
             "error_message": data.get("error_message"),
             "metrics": data.get("metrics"),
+            # Series fields (Phase 6.4)
+            "series_id":   data.get("series_id"),
+            "series_part": data.get("series_part"),
+            # A/B testing & tone metadata (Phase 6.5 / 6.6 / 6.7)
+            "prompt_variant": data.get("prompt_variant"),
+            "narrator_tone":  data.get("narrator_tone"),
+            "template_used":  data.get("template_used"),
             "created_at": datetime.now(timezone.utc),
             "published_at": data.get("published_at"),
         }

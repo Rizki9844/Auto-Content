@@ -12,6 +12,8 @@ on:
     - cron: '0 13 * * *'   # 8 AM EST — morning
     - cron: '0 18 * * *'   # 1 PM EST — lunch
     - cron: '0 0  * * *'   # 7 PM EST — prime time
+    # Phase 8.2: Monthly maintenance — 3 AM UTC on the 1st of each month
+    - cron: '0 3 1 * *'
   workflow_dispatch:         # Allow manual trigger from GitHub UI
 
 concurrency:
@@ -29,24 +31,22 @@ jobs:
 
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+      GEMINI_MODEL: gemini-2.5-flash
       MONGODB_URI: ${{ secrets.MONGODB_URI }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-      TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
-      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-      INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
-      UPLOAD_TARGETS: ${{ vars.UPLOAD_TARGETS || 'youtube' }}
-      CHANNEL_NAME: ${{ vars.CHANNEL_NAME || '@DevInSeconds' }}
-      TTS_VOICE: ${{ vars.TTS_VOICE || 'en-US-GuyNeural' }}
+      CHANNEL_NAME: '@DevInSeconds'
+      TTS_VOICE: en-US-GuyNeural
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      ACTIVE_THEME: ${{ vars.ACTIVE_THEME || 'github_dark' }}
-      AUTO_ROTATE_THEMES: ${{ vars.AUTO_ROTATE_THEMES || '0' }}
-      ENABLE_THUMBNAILS: ${{ vars.ENABLE_THUMBNAILS || '0' }}
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      PLUGINS: ${{ vars.PLUGINS || '' }}
+      ACTIVE_THEME: github_dark
+      AUTO_ROTATE_THEMES: '0'
+      ENABLE_THUMBNAILS: '0'
+      ENABLE_YT_ANALYTICS: '0'
+      CONTENT_LANGUAGE: 'en'   # set to 'id' or use secret for Indonesian series
+      PROMPT_VARIANT: 'auto'     # 'A' | 'B' | 'auto' — Phase 6.5 A/B testing
+      NARRATOR_TONE: 'auto'      # 'energetic'|'calm'|'curious'|'dramatic'|'auto'
 
     steps:
       # ── Checkout repository ─────────────────────────────────
@@ -82,6 +82,29 @@ jobs:
       # ── Run the pipeline ────────────────────────────────────
       - name: Run content pipeline
         run: python -m src.main
+
+      # ── Phase 8.1: Self-healing health checks ──────────────
+      - name: Run health monitor
+        continue-on-error: true
+        run: python -m src.main --health-monitor
+
+      # ── Phase 8.2: Monthly maintenance (1st of each month) ─
+      - name: Run monthly maintenance
+        if: github.event.schedule == '0 3 1 * *'
+        continue-on-error: true
+        run: python -m src.main --maintenance
+
+      # ── Refresh YouTube metrics (Phase 6.2) ─────────────────
+      # Fetches view/like/AVD data for videos uploaded >48h ago.
+      # To enable: set ENABLE_YT_ANALYTICS='1' and configure secrets
+      # YOUTUBE_CHANNEL_ID + YOUTUBE_API_KEY, then uncomment env block.
+      - name: Refresh YouTube metrics
+        if: env.ENABLE_YT_ANALYTICS == '1'
+        continue-on-error: true
+        # env:
+        #   YOUTUBE_CHANNEL_ID: $\{{ secrets.YOUTUBE_CHANNEL_ID }}
+        #   YOUTUBE_API_KEY: $\{{ secrets.YOUTUBE_API_KEY }}
+        run: python -m src.main --fetch-metrics
 
       # ── Keep repository active (prevent schedule disable) ───
       - name: Keep repository active

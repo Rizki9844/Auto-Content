@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | default("Pipeline Dashboard") }}</title>
+    <style>
+        :root {
+            --bg: #0d1117; --surface: #161b22; --border: #30363d;
+            --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+            --green: #7ee787; --red: #ff7b72; --yellow: #ffd700;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+               background: var(--bg); color: var(--text); line-height: 1.6; }
+        nav { background: var(--surface); border-bottom: 1px solid var(--border);
+              padding: 12px 24px; display: flex; gap: 24px; align-items: center; }
+        nav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+        nav a:hover, nav a.active { color: var(--accent); }
+        nav .brand { color: var(--text); font-weight: bold; font-size: 16px; }
+        .container { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+        .card { background: var(--surface); border: 1px solid var(--border);
+                border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+        .card h2 { font-size: 14px; color: var(--muted); text-transform: uppercase;
+                    letter-spacing: 0.05em; margin-bottom: 8px; }
+        .stat { font-size: 36px; font-weight: bold; }
+        .stat.green { color: var(--green); }
+        .stat.red { color: var(--red); }
+        .stat.blue { color: var(--accent); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px;
+                 font-size: 12px; font-weight: bold; }
+        .badge.success { background: #1a4731; color: var(--green); }
+        .badge.failed { background: #4a1d1d; color: var(--red); }
+        .search { background: var(--bg); border: 1px solid var(--border);
+                  color: var(--text); padding: 8px 12px; border-radius: 6px;
+                  width: 300px; margin-bottom: 16px; }
+        .pagination { display: flex; gap: 8px; margin-top: 16px; }
+        .pagination a { color: var(--accent); text-decoration: none; padding: 4px 12px;
+                        border: 1px solid var(--border); border-radius: 4px; }
+        .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+        .bar { background: var(--accent); border-radius: 2px 2px 0 0; min-width: 24px;
+               position: relative; }
+        .bar-label { font-size: 10px; color: var(--muted); text-align: center;
+                     position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+                     white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <nav>
+        <span class="brand">⚡ DevInSeconds</span>
+        <a href="/" {% if request.path == "/" %}class="active"{% endif %}>Overview</a>
+        <a href="/videos" {% if request.path == "/videos" %}class="active"{% endif %}>Videos</a>
+        <a href="/analytics" {% if request.path == "/analytics" %}class="active"{% endif %}>Analytics</a>
+        <a href="/health" {% if request.path == "/health" %}class="active"{% endif %}>Health</a>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

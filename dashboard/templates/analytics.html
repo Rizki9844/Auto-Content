@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 style="margin-bottom: 24px;">Analytics</h1>
+
+<div class="grid">
+    <div class="card">
+        <h2>Content Types</h2>
+        {% if data.get('content_types') %}
+        <table>
+            {% for ct, count in data['content_types'].items() %}
+            <tr>
+                <td>{{ ct }}</td>
+                <td>{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: var(--muted);">No data yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Languages</h2>
+        {% if data.get('languages') %}
+        <table>
+            {% for lang, count in data['languages'].items() %}
+            <tr>
+                <td>{{ lang }}</td>
+                <td>{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: var(--muted);">No data yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>Weekly Video Production</h2>
+    {% if data.get('weekly_counts') %}
+    <div class="bar-chart" style="margin-top: 12px; padding-bottom: 24px;">
+        {% set max_val = data['weekly_counts'].values() | max %}
+        {% for week, count in data['weekly_counts'].items() %}
+        {% set bar_h = (count * 100 // max_val) if max_val else 0 %}
+        <div class="bar" data-h="{{ bar_h }}" style="width:32px">
+            <span class="bar-label">{{ week[-3:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <script>document.querySelectorAll('.bar[data-h]').forEach(function(e){e.style.height=e.dataset.h+'px'});</script>
+    </div>
+    {% else %}
+    <p style="color: var(--muted);">No weekly data yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

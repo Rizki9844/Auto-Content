@@ -104,7 +104,7 @@ class TestQualityScoring:
             "hashtags": ["#A", "#B", "#C", "#D", "#E"],
             "content_type": "quiz",
         }
-        result = score_content(content, recent_types=["tip", "output_demo", "before_after"])
+        result = score_content(content, recent_types=["tip", "quiz", "before_after"])
         assert result["breakdown"]["diversity"] == 15
 
     def test_placeholder_code_penalized(self):

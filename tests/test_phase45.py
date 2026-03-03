@@ -3,8 +3,7 @@ Tests for Phase 4.5 — Plugin Architecture.
 
 Covers:
     - PluginRegistry: hook registration, firing, error isolation
-    - Built-in plugin discovery (builtin_discord, builtin_event_logger)
-    - Discord webhook handler (mock HTTP)
+    - Built-in plugin discovery (builtin_event_logger)
     - Event logger handler (file I/O)
     - init_plugins() idempotency
     - main.py hook wiring
@@ -14,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.plugins.registry import PluginRegistry, HOOK_NAMES
 
@@ -145,13 +144,13 @@ class TestDiscovery:
     def test_discover_builtin_loads_modules(self):
         reg = PluginRegistry()
         count = reg.discover_builtin()
-        assert count >= 2  # discord + event_logger at minimum
+        assert count >= 1  # event_logger at minimum
 
     def test_discover_builtin_idempotent(self):
         reg = PluginRegistry()
         first = reg.discover_builtin()
         second = reg.discover_builtin()
-        assert first >= 2
+        assert first >= 1
         assert second == 0  # already discovered
 
     def test_discover_registers_handlers(self):
@@ -162,7 +161,7 @@ class TestDiscovery:
         # Instead, verify discover_builtin successfully imports the modules.
         reg = PluginRegistry()
         count = reg.discover_builtin()
-        assert count >= 2
+        assert count >= 1
         # The built-in modules register on the *module-level* singleton,
         # not on `reg`. Verify the singleton has handlers.
         # (may already have them from previous imports)
@@ -201,79 +200,6 @@ class TestInitPlugins:
             m_disc.assert_called_once()
             m_load.assert_called_once()
             # init_plugins calls discover_builtin and load_from_env on the singleton
-
-
-# ══════════════════════════════════════════════════════════════
-#  Built-in: Discord Webhook
-# ══════════════════════════════════════════════════════════════
-
-class TestDiscordPlugin:
-    """Test Discord webhook handlers."""
-
-    def test_handle_pipeline_complete_no_url(self):
-        from src.plugins.builtin_discord import handle_pipeline_complete
-        with patch("src.plugins.builtin_discord.WEBHOOK_URL", ""):
-            result = handle_pipeline_complete({
-                "title": "Test",
-                "youtube_id": "abc",
-            })
-        assert result is False
-
-    def test_handle_pipeline_complete_posts(self):
-        from src.plugins.builtin_discord import handle_pipeline_complete
-        with (
-            patch("src.plugins.builtin_discord.WEBHOOK_URL", "https://discord.test/webhook"),
-            patch("src.plugins.builtin_discord._post", return_value=True) as m_post,
-        ):
-            result = handle_pipeline_complete({
-                "title": "Python Tip",
-                "youtube_id": "xyz123",
-                "upload_results": {"youtube": "xyz123"},
-                "language": "python",
-            })
-        assert result is True
-        m_post.assert_called_once()
-        payload = m_post.call_args[0][0]
-        assert payload["embeds"][0]["title"] == "✅ Python Tip"
-
-    def test_handle_error_posts(self):
-        from src.plugins.builtin_discord import handle_error
-        with (
-            patch("src.plugins.builtin_discord.WEBHOOK_URL", "https://discord.test/webhook"),
-            patch("src.plugins.builtin_discord._post", return_value=True) as m_post,
-        ):
-            result = handle_error({
-                "error": "API timeout",
-                "error_class": "TRANSIENT",
-            })
-        assert result is True
-        payload = m_post.call_args[0][0]
-        assert "TRANSIENT" in payload["embeds"][0]["title"]
-
-    def test_handle_error_no_url(self):
-        from src.plugins.builtin_discord import handle_error
-        with patch("src.plugins.builtin_discord.WEBHOOK_URL", ""):
-            result = handle_error({"error": "x"})
-        assert result is False
-
-    def test_post_sends_json(self):
-        from src.plugins.builtin_discord import _post
-        with patch("src.plugins.builtin_discord.WEBHOOK_URL", "https://discord.test/hook"):
-            mock_resp = MagicMock()
-            mock_resp.status = 204
-            mock_resp.__enter__ = MagicMock(return_value=mock_resp)
-            mock_resp.__exit__ = MagicMock(return_value=False)
-            with patch("urllib.request.urlopen", return_value=mock_resp) as m_open:
-                ok = _post({"test": True})
-            assert ok is True
-            m_open.assert_called_once()
-
-    def test_post_returns_false_on_exception(self):
-        from src.plugins.builtin_discord import _post
-        with patch("src.plugins.builtin_discord.WEBHOOK_URL", "https://discord.test/hook"):
-            with patch("urllib.request.urlopen", side_effect=Exception("net err")):
-                ok = _post({"test": True})
-            assert ok is False
 
 
 # ══════════════════════════════════════════════════════════════

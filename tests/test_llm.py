@@ -128,10 +128,10 @@ class TestValidateContent:
             "code": "print(1)",
             "language": "python",
             "hashtags": ["#A", "#B", "#C"],
-            "content_type": "output_demo",
+            "content_type": "quiz",
         }
         _validate_content(data)
-        assert "expected_output" in data
+        assert data["content_type"] == "quiz"
 
     def test_quiz_gets_quiz_answer_default(self):
         data = {

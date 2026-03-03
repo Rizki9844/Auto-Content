@@ -1,14 +1,17 @@
 """
-Thumbnail generator — Phase 4.6.
+Thumbnail generator — Phase 4.6 + Phase 9.5 AI upgrade.
 
-Generates a 1280×720 YouTube thumbnail for each video:
-  - Gradient background (respects active theme)
-  - Language badge with emoji + name
-  - Title text (wrapped, centered)
-  - Code snippet preview (first 8 lines, syntax-highlighted)
-  - Channel watermark
+Generates a 1280×720 YouTube thumbnail for each video.
 
-Optionally uploads the thumbnail via YouTube Data API ``thumbnails.set()``.
+Two modes (controlled by config.THUMBNAIL_STYLE):
+  - "pillow" (default): Pure Pillow-based rendering (Phase 4.6)
+  - "ai":   AI-generated background via Stability AI + Pillow text overlay (Phase 9.5)
+
+Features (AI mode):
+  - Generates background using Stability AI (stable-diffusion-xl-1024-v1-0)
+  - Prompt auto-generated from language + content context
+  - Background cache: same language = same background (saves API calls)
+  - Falls back to Pillow-only mode if AI API fails
 
 Usage:
     from src.thumbnail import generate_thumbnail, upload_thumbnail
@@ -107,6 +110,126 @@ def _get_syntax_colors() -> dict:
 
 
 # ══════════════════════════════════════════════════════════════
+#  AI BACKGROUND GENERATION  (Phase 9.5)
+# ══════════════════════════════════════════════════════════════
+
+# Cache directory for AI-generated backgrounds
+_BG_CACHE_DIR = config.OUTPUT_DIR / "thumb_bg_cache"
+
+
+def _get_ai_bg_prompt(language: str) -> str:
+    """Generate a prompt for Stability AI based on language."""
+    lang_themes = {
+        "python": "neon green Python snake patterns",
+        "javascript": "neon yellow JavaScript energy waves",
+        "typescript": "electric blue TypeScript angular shapes",
+        "go": "teal Go gopher geometric patterns",
+        "rust": "orange Rust crab metallic textures",
+        "java": "warm red Java coffee steam patterns",
+        "cpp": "purple C++ circuit board patterns",
+    }
+    theme = lang_themes.get(language.lower(), f"neon {language} code patterns")
+    return (
+        f"Dark coding wallpaper, {theme}, "
+        "dark background, subtle glow, minimalist, abstract, "
+        "high quality, 1280x720, digital art, no text"
+    )
+
+
+def _get_cached_bg(language: str) -> Path | None:
+    """Return cached background for this language if it exists."""
+    cache_path = _BG_CACHE_DIR / f"{language.lower()}_bg.png"
+    if cache_path.exists() and cache_path.stat().st_size > 1000:
+        return cache_path
+    return None
+
+
+def _save_bg_cache(language: str, image: Image.Image) -> Path:
+    """Cache an AI-generated background."""
+    _BG_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = _BG_CACHE_DIR / f"{language.lower()}_bg.png"
+    image.save(str(cache_path), "PNG")
+    logger.info(f"Cached AI background: {cache_path}")
+    return cache_path
+
+
+def generate_ai_background(language: str) -> Image.Image | None:
+    """
+    Generate a thumbnail background using Stability AI.
+
+    Uses stable-diffusion-xl-1024-v1-0 via REST API.
+    Returns a 1280×720 PIL Image, or None if generation fails.
+    """
+    api_key = config.STABILITY_API_KEY
+    if not api_key:
+        logger.warning("STABILITY_API_KEY not set — cannot generate AI background")
+        return None
+
+    # Check cache first
+    cached = _get_cached_bg(language)
+    if cached:
+        logger.info(f"Using cached AI background for {language}")
+        return Image.open(str(cached))
+
+    prompt = _get_ai_bg_prompt(language)
+    logger.info(f"Generating AI background: {prompt[:80]}...")
+
+    try:
+        import requests
+
+        response = requests.post(
+            "https://api.stability.ai/v1/generation/"
+            "stable-diffusion-xl-1024-v1-0/text-to-image",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "text_prompts": [{"text": prompt, "weight": 1.0}],
+                "cfg_scale": 7,
+                "width": 1280,
+                "height": 704,  # closest supported resolution to 720
+                "steps": 30,
+                "samples": 1,
+                "style_preset": "neon-punk",
+            },
+            timeout=60,
+        )
+
+        if response.status_code != 200:
+            logger.warning(
+                f"Stability AI request failed ({response.status_code}): "
+                f"{response.text[:200]}"
+            )
+            return None
+
+        data = response.json()
+        artifacts = data.get("artifacts", [])
+        if not artifacts:
+            logger.warning("Stability AI returned no artifacts")
+            return None
+
+        import base64
+        import io
+
+        img_data = base64.b64decode(artifacts[0]["base64"])
+        img = Image.open(io.BytesIO(img_data)).convert("RGB")
+
+        # Resize to exact thumbnail dimensions
+        img = img.resize((THUMB_W, THUMB_H), Image.Resampling.LANCZOS)
+
+        # Cache for future use
+        _save_bg_cache(language, img)
+
+        return img
+
+    except Exception as exc:
+        logger.warning(f"AI background generation failed: {exc}")
+        return None
+
+
+# ══════════════════════════════════════════════════════════════
 #  Public API
 # ══════════════════════════════════════════════════════════════
 
@@ -146,11 +269,22 @@ def generate_thumbnail(
     syntax_colors = _get_syntax_colors()
 
     # ── Build image ────────────────────────────────────────────
-    img = _make_gradient(
-        THUMB_W, THUMB_H,
-        tuple(config.BG_GRADIENT_TOP),
-        tuple(config.BG_GRADIENT_BOTTOM),
-    ).convert("RGB")
+    # Phase 9.5: Use AI background if THUMBNAIL_STYLE == "ai"
+    ai_bg = None
+    if config.THUMBNAIL_STYLE == "ai":
+        ai_bg = generate_ai_background(lang_key)
+
+    if ai_bg is not None:
+        img = ai_bg.convert("RGB")
+        # Darken AI background slightly for text readability
+        from PIL import ImageEnhance
+        img = ImageEnhance.Brightness(img).enhance(0.6)
+    else:
+        img = _make_gradient(
+            THUMB_W, THUMB_H,
+            tuple(config.BG_GRADIENT_TOP),
+            tuple(config.BG_GRADIENT_BOTTOM),
+        ).convert("RGB")
     draw = ImageDraw.Draw(img)
 
     # ── Fonts ──────────────────────────────────────────────────

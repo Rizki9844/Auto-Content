@@ -1,7 +1,7 @@
 """
-Tests for Phase 4.1 — Multi-Platform Upload abstraction.
+Tests for Phase 4.1 — Upload abstraction.
 Covers: UploaderBase, UploadResult, registry, get_uploaders, and
-adapter classes for YouTube, TikTok, Instagram.
+adapter class for YouTube.
 """
 from unittest.mock import patch
 
@@ -24,7 +24,7 @@ class TestUploadResult:
         assert r.error == ""
 
     def test_failure_result(self):
-        r = UploadResult(platform="tiktok", success=False, error="Network error")
+        r = UploadResult(platform="youtube", success=False, error="Network error")
         assert r.success is False
         assert r.video_id == ""
         assert r.error == "Network error"
@@ -32,7 +32,7 @@ class TestUploadResult:
     def test_frozen(self):
         r = UploadResult(platform="youtube", success=True)
         try:
-            r.platform = "tiktok"  # type: ignore[misc]
+            r.platform = "other"  # type: ignore[misc]
             assert False, "Should not be mutable"
         except AttributeError:
             pass
@@ -52,18 +52,13 @@ class TestRegistry:
     def test_get_uploaders_returns_configured_only(self):
         """Uploaders without credentials should be skipped."""
         with (
-            patch("src.config.UPLOAD_TARGETS", "youtube,tiktok,instagram"),
+            patch("src.config.UPLOAD_TARGETS", "youtube"),
             patch("src.config.YOUTUBE_CLIENT_ID", "fake-id"),
             patch("src.config.YOUTUBE_REFRESH_TOKEN", "fake-token"),
-            patch("src.config.TIKTOK_ACCESS_TOKEN", ""),
-            patch("src.config.INSTAGRAM_ACCESS_TOKEN", ""),
-            patch("src.config.INSTAGRAM_ACCOUNT_ID", ""),
         ):
             uploaders = get_uploaders()
             names = [u.name for u in uploaders]
             assert "youtube" in names
-            assert "tiktok" not in names
-            assert "instagram" not in names
 
     def test_get_uploaders_unknown_target_skipped(self):
         """Unknown platform names should be silently skipped."""
@@ -138,69 +133,3 @@ class TestYouTubeUploader:
         assert "boom" in result.error
 
 
-# ──────────────────────────────────────────────────────────────
-#  TikTok adapter
-# ──────────────────────────────────────────────────────────────
-class TestTikTokUploader:
-    def test_name(self):
-        from src.uploader_tiktok import TikTokUploader
-        assert TikTokUploader().name == "tiktok"
-
-    def test_is_configured_true(self):
-        from src.uploader_tiktok import TikTokUploader
-        with patch("src.config.TIKTOK_ACCESS_TOKEN", "tok"):
-            assert TikTokUploader().is_configured() is True
-
-    def test_is_configured_false(self):
-        from src.uploader_tiktok import TikTokUploader
-        with patch("src.config.TIKTOK_ACCESS_TOKEN", ""):
-            assert TikTokUploader().is_configured() is False
-
-    def test_upload_success(self):
-        from src.uploader_tiktok import TikTokUploader
-        with patch("src.uploader_tiktok.upload_to_tiktok", return_value="tt_123"):
-            result = TikTokUploader().upload("/tmp/v.mp4", "T", "D", ["#tag"])
-        assert result.success is True
-        assert result.video_id == "tt_123"
-
-    def test_upload_exception_caught(self):
-        from src.uploader_tiktok import TikTokUploader
-        with patch("src.uploader_tiktok.upload_to_tiktok", side_effect=RuntimeError("fail")):
-            result = TikTokUploader().upload("/tmp/v.mp4", "T", "D")
-        assert result.success is False
-        assert "fail" in result.error
-
-
-# ──────────────────────────────────────────────────────────────
-#  Instagram adapter
-# ──────────────────────────────────────────────────────────────
-class TestInstagramUploader:
-    def test_name(self):
-        from src.uploader_instagram import InstagramUploader
-        assert InstagramUploader().name == "instagram"
-
-    def test_is_configured_true(self):
-        from src.uploader_instagram import InstagramUploader
-        with (
-            patch("src.config.INSTAGRAM_ACCESS_TOKEN", "tok"),
-            patch("src.config.INSTAGRAM_ACCOUNT_ID", "123"),
-        ):
-            assert InstagramUploader().is_configured() is True
-
-    def test_is_configured_false_no_token(self):
-        from src.uploader_instagram import InstagramUploader
-        with (
-            patch("src.config.INSTAGRAM_ACCESS_TOKEN", ""),
-            patch("src.config.INSTAGRAM_ACCOUNT_ID", "123"),
-        ):
-            assert InstagramUploader().is_configured() is False
-
-    def test_upload_no_video_url_returns_false(self):
-        """Instagram upload requires public URL — without it, should return failure."""
-        from src.uploader_instagram import InstagramUploader
-        with (
-            patch("src.config.INSTAGRAM_ACCESS_TOKEN", "tok"),
-            patch("src.config.INSTAGRAM_ACCOUNT_ID", "123"),
-        ):
-            result = InstagramUploader().upload("/tmp/v.mp4", "T", "D")
-        assert result.success is False

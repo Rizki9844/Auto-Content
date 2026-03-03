@@ -13,6 +13,10 @@ Usage:
     python -m src.main --analytics    # print analytics report to stdout
     python -m src.main --analytics --save  # also write report to output/
     python -m src.main --health       # health-check (exit 0 = OK)
+    python -m src.main --health-monitor  # Phase 8.1 self-healing checks
+    python -m src.main --maintenance  # Phase 8.2 DB archive & cleanup
+    python -m src.main --logs         # Phase 8.3 view recent pipeline logs
+    python -m src.main --logs --last 20  # view last 20 pipeline logs
 
     Environment variables for Phase 4.4/4.6:
     ACTIVE_THEME=monokai              # use a different color theme
@@ -21,7 +25,6 @@ Usage:
 
     Plugin system (Phase 4.5):
     PLUGINS=my_pkg.social             # comma-separated custom plugin modules
-    DISCORD_WEBHOOK_URL=https://...   # enable Discord notifications
 """
 import json as _json
 import os
@@ -29,6 +32,7 @@ import sys
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 
 # ── Plugin system (Phase 4.5) ─────────────────────────────────
@@ -98,6 +102,36 @@ logging.getLogger().addFilter(CredentialFilter())
 logger = logging.getLogger("pipeline")
 
 
+# ── Phase 8.4: Step timeout wrapper ───────────────────────────
+def _run_with_timeout(fn, timeout_s: int, step_name: str):
+    """
+    Execute ``fn()`` with a timeout.
+
+    If the function doesn't complete within ``timeout_s`` seconds,
+    raises a TransientError.
+
+    Args:
+        fn: Zero-argument callable to execute.
+        timeout_s: Maximum seconds to wait.
+        step_name: Name of the step (for error messages).
+
+    Returns:
+        The return value of fn().
+    """
+    from src.errors import TransientError
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fn)
+        try:
+            return future.result(timeout=timeout_s)
+        except FuturesTimeoutError:
+            future.cancel()
+            raise TransientError(
+                f"Step '{step_name}' timed out after {timeout_s}s",
+                step=step_name,
+            )
+
+
 # ── Content safety filter ──────────────────────────────────────
 # NOTE: single generic words (kill, bomb, exploit, weapon) are intentionally
 # excluded — they are common programming terms:
@@ -151,9 +185,15 @@ def main():
     from src.errors import (
         classify_error, PipelineError, ContentError,
     )
+    from src.pipeline_logger import PipelineLog
+
+    # Phase 8.3: Initialize structured audit log
+    plog = PipelineLog(run_type="single")
 
     logger.info("=" * 55)
     logger.info("  Automated Coding Shorts Pipeline — Starting")
+    if config.ENVIRONMENT != "production":
+        logger.info(f"  ⚠ Environment: {config.ENVIRONMENT}")
     logger.info("=" * 55)
 
     # ── Validate required environment variables ───────────────
@@ -194,6 +234,7 @@ def main():
         # ║  STEP 1 — Generate Content (Gemini Pro)           ║
         # ╚════════════════════════════════════════════════════╝
         logger.info("STEP 1/6 │ Generating content with Gemini Pro...")
+        plog.start_step("content_generation")
 
         # Rate limit check (Phase 3.6)
         delay = rate_limiter.pre_gemini_call()
@@ -205,11 +246,18 @@ def main():
         lang_freq = get_language_frequency()
 
         _t0 = time.perf_counter()
-        content = generate_content(
-            avoid_languages=lang_freq.get("suggested_avoid", []),
+        content = _run_with_timeout(
+            lambda: generate_content(
+                avoid_languages=lang_freq.get("suggested_avoid", []),
+            ),
+            timeout_s=config.STEP_TIMEOUT_S,
+            step_name="content_generation",
         )
         metrics["gemini_latency_ms"] = round((time.perf_counter() - _t0) * 1000)
         rate_limiter.record_gemini_call()
+        plog.end_step("content_generation", status="success", details={
+            "latency_ms": metrics["gemini_latency_ms"],
+        })
 
         record.update({
             "topic": content["title"],
@@ -219,11 +267,17 @@ def main():
             "language": content["language"],
             "hashtags": content.get("hashtags", []),
             "content_type": content.get("content_type", "tip"),
+            # Phase 6.5 / 6.6 / 6.7 metadata
+            "prompt_variant": content.get("prompt_variant"),
+            "narrator_tone":  content.get("narrator_tone"),
+            "template_used":  content.get("template_used"),
         })
 
         logger.info(f"  ✓ Title:    {content['title']}")
         logger.info(f"  ✓ Type:     {content.get('content_type', 'tip')}")
         logger.info(f"  ✓ Language: {content['language']}")
+        logger.info(f"  ✓ Variant:  {content.get('prompt_variant', '?')}")
+        logger.info(f"  ✓ Tone:     {content.get('narrator_tone', '?')}")
         logger.info(f"  ✓ Code:     {len(content['code'])} chars, {content['code'].count(chr(10))+1} lines")
         logger.info(f"  ✓ Script:   {len(content['script'].split())} words")
 
@@ -284,6 +338,10 @@ def main():
                 "language": content["language"],
                 "hashtags": content.get("hashtags", []),
                 "content_type": content.get("content_type", "tip"),
+                # Phase 6.5 / 6.6 / 6.7 metadata (may change on regeneration)
+                "prompt_variant": content.get("prompt_variant"),
+                "narrator_tone":  content.get("narrator_tone"),
+                "template_used":  content.get("template_used"),
             })
 
         # ── Code similarity check (Phase 3.3) ────────────────
@@ -317,33 +375,78 @@ def main():
         # ║  STEP 2 — Generate Voiceover (edge-tts)           ║
         # ╚════════════════════════════════════════════════════╝
         logger.info("STEP 2/6 │ Generating voiceover with edge-tts...")
+        plog.start_step("tts_generation")
         _t0 = time.perf_counter()
-        audio_path, word_timestamps = generate_speech(
-            text=content["script"],
-            voice=config.TTS_VOICE,
+        audio_path, word_timestamps = _run_with_timeout(
+            lambda: generate_speech(
+                text=content["script"],
+                voice=config.TTS_VOICE,
+            ),
+            timeout_s=config.STEP_TIMEOUT_S,
+            step_name="tts_generation",
         )
         metrics["tts_latency_ms"] = round((time.perf_counter() - _t0) * 1000)
+        plog.end_step("tts_generation", status="success", details={
+            "latency_ms": metrics["tts_latency_ms"],
+            "word_count": len(word_timestamps),
+        })
 
         logger.info(f"  ✓ Audio:      {audio_path}")
         logger.info(f"  ✓ Timestamps: {len(word_timestamps)} words")
 
         # ╔════════════════════════════════════════════════════╗
+        # ║  STEP 2b — Mix Background Music (Phase 9.1)       ║
+        # ╚════════════════════════════════════════════════════╝
+        if config.ENABLE_BGMUSIC == "1":
+            plog.start_step("bgmusic_mix")
+            try:
+                from src.bgmusic import mix_background_music
+                audio_path = _run_with_timeout(
+                    lambda: mix_background_music(audio_path),
+                    timeout_s=config.STEP_TIMEOUT_S,
+                    step_name="bgmusic_mix",
+                )
+                plog.end_step("bgmusic_mix", status="success")
+                logger.info(f"  ✓ Background music mixed: {audio_path}")
+            except Exception as _bgm_err:
+                plog.end_step("bgmusic_mix", status="failed", error=str(_bgm_err))
+                logger.warning(f"Background music failed (non-critical): {_bgm_err}")
+        else:
+            plog.skip_step("bgmusic_mix", reason="ENABLE_BGMUSIC != 1")
+
+        # ╔════════════════════════════════════════════════════╗
         # ║  STEP 3 — Render Video (Pillow + moviepy)         ║
         # ╚════════════════════════════════════════════════════╝
         logger.info("STEP 3/6 │ Rendering video...")
+        plog.start_step("video_render")
         _t0 = time.perf_counter()
-        video_path = create_video(
-            code=content["code"],
-            language=content["language"],
-            word_timestamps=word_timestamps,
-            audio_path=audio_path,
-            channel_name=config.CHANNEL_NAME,
-            content_type=content.get("content_type", "tip"),
-            code_output=code_output,
-            code_before=content.get("code_before"),
-            title=content["title"],
+
+        # Phase 8.5: Add "[STAGING]" prefix in staging environment
+        _video_title = content["title"]
+        if config.ENVIRONMENT == "staging":
+            if not _video_title.startswith("[STAGING]"):
+                _video_title = f"[STAGING] {_video_title}"
+                content["title"] = _video_title
+
+        video_path = _run_with_timeout(
+            lambda: create_video(
+                code=content["code"],
+                language=content["language"],
+                word_timestamps=word_timestamps,
+                audio_path=audio_path,
+                channel_name=config.CHANNEL_NAME,
+                content_type=content.get("content_type", "tip"),
+                code_output=code_output,
+                code_before=content.get("code_before"),
+                title=content["title"],
+            ),
+            timeout_s=config.RENDER_TIMEOUT_S,
+            step_name="video_render",
         )
         metrics["render_latency_ms"] = round((time.perf_counter() - _t0) * 1000)
+        plog.end_step("video_render", status="success", details={
+            "latency_ms": metrics["render_latency_ms"],
+        })
 
         # Get video duration for record
         from src.tts import get_audio_duration
@@ -380,16 +483,25 @@ def main():
         # ║  STEP 4 — Upload to Platforms (Phase 4.1)         ║
         # ╚════════════════════════════════════════════════════╝
         logger.info(f"STEP 4/6 │ Uploading to {len(uploaders)} platform(s)...")
+        plog.start_step("upload")
 
         # Build description once for all platforms
-        description_parts = [
-            content["script"],
-            "",
-            " ".join(content.get("hashtags", [])),
-            "",
-            f"Generated by {config.CHANNEL_NAME} pipeline",
-        ]
-        description = "\n".join(description_parts)
+        # Phase 7.1: SEO-optimized description when enabled
+        if config.ENABLE_SEO_DESCRIPTION == "1":
+            from src.seo import generate_seo_description
+            description = generate_seo_description(
+                content,
+                duration_seconds=record.get("duration_seconds", 0),
+            )
+        else:
+            description_parts = [
+                content["script"],
+                "",
+                " ".join(content.get("hashtags", [])),
+                "",
+                f"Generated by {config.CHANNEL_NAME} pipeline",
+            ]
+            description = "\n".join(description_parts)
 
         upload_results: dict[str, str | None] = {}
         _t0 = time.perf_counter()
@@ -441,6 +553,24 @@ def main():
                             language=content["language"],
                             code=content["code"],
                         )
+                        # Phase 7 — Post-upload YouTube actions
+                        #   (pinned comment, playlist, end-screen CTA)
+                        try:
+                            from src.youtube_actions import run_post_upload_actions
+                            yt_actions = run_post_upload_actions(
+                                video_id=result.video_id or "",
+                                content=content,
+                                duration_seconds=record.get("duration_seconds", 0),
+                            )
+                            record["yt_post_actions"] = yt_actions
+                            if yt_actions.get("comment_id"):
+                                logger.info(f"  📌 Pinned comment: {yt_actions['comment_id']}")
+                            if yt_actions.get("playlist_id"):
+                                logger.info(f"  📋 Added to playlist: {yt_actions['playlist_id']}")
+                            if yt_actions.get("end_screen_cta"):
+                                logger.info("  🎬 End-screen CTA appended")
+                        except Exception as _yt_act_err:
+                            logger.debug(f"Post-upload actions skipped: {_yt_act_err}")
                 else:
                     upload_results[result.platform] = None
                     classified = classify_error(
@@ -467,18 +597,28 @@ def main():
                 f"{p}={vid}" for p, vid in upload_results.items() if vid
             )
             logger.info(f"  ✓ Uploaded: {platform_summary}")
+            plog.end_step("upload", status="success", details={
+                "latency_ms": metrics["upload_latency_ms"],
+                "results": {p: bool(v) for p, v in upload_results.items()},
+            })
         else:
             logger.info("  ⚠ All uploads skipped or deferred")
+            plog.end_step("upload", status="skipped", details={
+                "reason": "all uploads skipped or deferred",
+            })
 
         # ╔════════════════════════════════════════════════════╗
         # ║  STEP 5 — Save Record to MongoDB                  ║
         # ╚════════════════════════════════════════════════════╝
         logger.info("STEP 5/6 │ Saving record to MongoDB Atlas...")
+        plog.start_step("save_record")
         record["status"] = "success" if any_success else "rendered_not_uploaded"
         record["published_at"] = datetime.now(timezone.utc)
+        record["environment"] = config.ENVIRONMENT  # Phase 8.5
         metrics["total_latency_ms"] = round((time.perf_counter() - _t_pipeline) * 1000)
         record["metrics"] = metrics
         doc_id = save_record(record)
+        plog.end_step("save_record", status="success")
 
         logger.info(f"  ✓ MongoDB: {doc_id}")
 
@@ -515,6 +655,10 @@ def main():
             content_type=content.get("content_type", "tip"),
             duration=record.get("duration_seconds", 0),
         )
+
+        # ── Phase 8.3: Save pipeline audit log ───────────────
+        plog.set_outcome("success")
+        plog.save()
 
     except Exception as e:
         # ── Classify and handle failure (Phase 3.7) ───────────
@@ -557,6 +701,13 @@ def main():
                 error_message=str(e)[:300],
                 error_class=classified.error_class,
             )
+        except Exception:
+            pass
+
+        # ── Phase 8.3: Save pipeline audit log on failure ────
+        try:
+            plog.set_outcome("failed", error=str(e)[:500])
+            plog.save()
         except Exception:
             pass
 
@@ -1035,6 +1186,173 @@ def _health_check() -> int:
     return 0 if all_ok else 1
 
 
+def series_pipeline(theme: str, episodes: int) -> int:
+    """
+    Phase 6.4: Smart Series Generator.
+
+    Generates a structured plan for a mini-series via LLM, then queues
+    one video per episode with series context injected into the prompt +
+    a "Part N" badge on the intro card.
+
+    Returns number of episodes successfully queued (non-zero = partial/full success).
+
+    Usage:
+        python -m src.main --series "Python Basics" --episodes 5
+    """
+    from src import config
+    from src.series_planner import plan_series, make_series_id
+    from src.llm import generate_content
+    from src.tts import generate_speech
+    from src.video import create_video, verify_video
+    from src.db import check_code_similarity, get_language_frequency
+    from src.code_runner import get_output_for_content
+    from src.quality import score_content
+    from src.scheduler import add_to_schedule, next_available_slots
+
+    logger.info("=" * 55)
+    logger.info(f"  Series Pipeline — \"{theme}\" ({episodes} episodes)")
+    logger.info("=" * 55)
+
+    errors = []
+    if not config.GEMINI_API_KEY:
+        errors.append("GEMINI_API_KEY")
+    if not config.MONGODB_URI:
+        errors.append("MONGODB_URI")
+    if errors:
+        logger.error(f"Missing required secrets: {', '.join(errors)}")
+        return 0
+
+    # 1. Generate series plan
+    logger.info("  Generating series plan via LLM…")
+    try:
+        plan = plan_series(theme, episodes)
+    except Exception as exc:
+        logger.error(f"plan_series() failed: {exc}")
+        return 0
+    logger.info(f"  Plan ready: {len(plan)} episodes")
+
+    series_id = make_series_id(theme)
+    lang_freq = get_language_frequency()
+    slots = next_available_slots(len(plan))
+    queued = 0
+
+    for ep in plan:
+        ep_num = ep["episode"]
+        logger.info(
+            f"  [{ep_num}/{len(plan)}] {ep['topic']} "
+            f"({ep['language']}, {ep['content_type']})"
+        )
+
+        series_ctx = {
+            "episode":      ep_num,
+            "total":        len(plan),
+            "theme":        theme,
+            "topic":        ep["topic"],
+            "content_type": ep["content_type"],
+            "language":     ep["language"],
+        }
+
+        try:
+            content = generate_content(
+                avoid_languages=lang_freq.get("suggested_avoid", []),
+                series_context=series_ctx,
+            )
+
+            safe, reason = _is_content_safe(content)
+            if not safe:
+                logger.warning(f"  [{ep_num}] Blocked: {reason} — skipping")
+                continue
+
+            quality = score_content(content, recent_types=lang_freq.get("recent_types", []))
+            if not quality["passed"]:
+                logger.warning(
+                    f"  [{ep_num}] Quality {quality['total_score']}/100 below threshold"
+                    " — proceeding anyway (series mode)"
+                )
+
+            audio_path, word_timestamps = generate_speech(text=content["script"])
+            code_output = get_output_for_content(content)
+
+            video_path = create_video(
+                code=content["code"],
+                language=content["language"],
+                word_timestamps=word_timestamps,
+                audio_path=audio_path,
+                channel_name=config.CHANNEL_NAME,
+                content_type=content.get("content_type", "tip"),
+                code_output=code_output,
+                code_before=content.get("code_before"),
+                title=content["title"],
+                series_part=ep_num,
+            )
+
+            vq = verify_video(video_path)
+            if not vq["passed"]:
+                logger.warning(f"  [{ep_num}] Video quality failed: {vq['errors']} — skipping")
+                continue
+
+            sim = check_code_similarity(content["code"])
+            if sim["is_duplicate"]:
+                logger.warning(f"  [{ep_num}] Code too similar to existing — skipping")
+                continue
+
+            # Pick the next available slot or fall back
+            slot = slots[queued] if queued < len(slots) else None
+            extra = {"series_id": series_id, "series_part": ep_num}
+            add_to_schedule(
+                content={**content, **extra},
+                video_path=video_path,
+                scheduled_time=slot,
+            )
+            queued += 1
+            logger.info(f"  [{ep_num}] ✓ Queued for {slot}")
+
+        except Exception as exc:  # noqa: BLE001
+            from src.errors import classify_error
+            category, _ = classify_error(exc)
+            logger.error(f"  [{ep_num}] Failed ({category}): {exc}")
+
+    logger.info(f"  Series complete: {queued}/{len(plan)} episodes queued")
+    logger.info("=" * 55)
+    return queued
+
+
+def fetch_metrics_pipeline() -> int:
+    """
+    Phase 6.2: Fetch YouTube Analytics metrics for recent uploaded videos
+    and persist them to MongoDB (``yt_metrics`` field on each record).
+
+    Designed to run as a cron task ~48 h after each upload batch.
+    Returns 0 on clean run, 1 if any fetch failed.
+    """
+    from src import config
+    if not config.MONGODB_URI:
+        logger.error("MONGODB_URI not configured")
+        return 1
+    if not config.YOUTUBE_REFRESH_TOKEN:
+        logger.error("YOUTUBE_REFRESH_TOKEN not configured — cannot fetch metrics")
+        return 1
+
+    logger.info("=" * 55)
+    logger.info("  YouTube Metrics Refresh — Phase 6.2")
+    logger.info("=" * 55)
+
+    from src.yt_analytics import fetch_and_store_recent
+    summary = fetch_and_store_recent(
+        limit=20,
+        channel_id=config.YOUTUBE_CHANNEL_ID,
+        min_age_hours=48,
+    )
+    logger.info(
+        f"  ✓ updated={summary['updated']}, "
+        f"failed={summary['failed']}, "
+        f"skipped={summary['skipped']}, "
+        f"processed={summary['processed']}"
+    )
+    logger.info("=" * 55)
+    return 0 if summary["failed"] == 0 else 1
+
+
 def analytics_pipeline(save: bool = False) -> int:
     """
     Phase 4.3: Generate analytics report from MongoDB history.
@@ -1059,11 +1377,54 @@ def analytics_pipeline(save: bool = False) -> int:
         return 1
 
 
+def growth_pipeline() -> int:
+    """
+    Phase 7.6: Generate channel growth report.
+
+    Returns:
+        0 on success, 1 on error.
+    """
+    from src.analytics import generate_growth_report
+
+    try:
+        report = generate_growth_report()
+        print(report)
+        return 0
+    except Exception as exc:
+        logger.error(f"Growth report failed: {exc}", exc_info=True)
+        return 1
+
+
 if __name__ == "__main__":
     if "--health" in sys.argv:
         sys.exit(_health_check())
-    if "--analytics" in sys.argv:
+    elif "--health-monitor" in sys.argv:
+        # Phase 8.1: Self-healing pipeline checks
+        from src.health_monitor import run_all_checks
+        report = run_all_checks()
+        issues = report.get("stale_queue", {}).get("stale_count", 0)
+        sys.exit(0 if issues == 0 else 1)
+    elif "--maintenance" in sys.argv:
+        # Phase 8.2: DB archive & cleanup
+        from src.db_maintenance import run_maintenance
+        run_maintenance()
+        sys.exit(0)
+    elif "--logs" in sys.argv:
+        # Phase 8.3: View recent pipeline logs
+        from src.pipeline_logger import print_logs
+        try:
+            idx = sys.argv.index("--last")
+            n = int(sys.argv[idx + 1])
+        except (IndexError, ValueError):
+            n = 10
+        print_logs(last=n)
+        sys.exit(0)
+    elif "--analytics" in sys.argv:
         sys.exit(analytics_pipeline(save="--save" in sys.argv))
+    elif "--growth" in sys.argv:
+        sys.exit(growth_pipeline())
+    elif "--fetch-metrics" in sys.argv:
+        sys.exit(fetch_metrics_pipeline())
     elif "--upload-queue" in sys.argv:
         upload_queue_pipeline()
     elif "--batch" in sys.argv:
@@ -1074,5 +1435,19 @@ if __name__ == "__main__":
             logger.error("Usage: python -m src.main --batch <N>")
             sys.exit(1)
         batch_pipeline(n)
+    elif "--series" in sys.argv:
+        try:
+            s_idx = sys.argv.index("--series")
+            theme = sys.argv[s_idx + 1]
+        except (IndexError, ValueError):
+            logger.error("Usage: python -m src.main --series \"<theme>\" [--episodes N]")
+            sys.exit(1)
+        try:
+            e_idx = sys.argv.index("--episodes")
+            n_eps = int(sys.argv[e_idx + 1])
+        except (IndexError, ValueError):
+            n_eps = 5  # sensible default
+        queued = series_pipeline(theme, n_eps)
+        sys.exit(0 if queued > 0 else 1)
     else:
         main()

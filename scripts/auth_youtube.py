@@ -2,23 +2,41 @@
 One-time OAuth2 setup script for YouTube API.
 
 Usage (run locally, NOT in CI):
-    python -m scripts.auth_youtube
+    python -m scripts.auth_youtube              # single channel (legacy)
+    python -m scripts.auth_youtube --channel en  # named channel for multi-channel
 
 This opens a browser window for Google OAuth consent.
 After authorizing, it prints the refresh token.
 Save the token as YOUTUBE_REFRESH_TOKEN in your GitHub Secrets.
 
+Phase 9.3: Supports --channel flag for multi-channel OAuth flows.
+
 IMPORTANT: Your Google Cloud OAuth consent screen must be "Published"
 (not "Testing"), otherwise the refresh token expires after 7 days.
 """
+import sys
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 
 def main():
+    # Parse --channel flag
+    channel_name = None
+    if "--channel" in sys.argv:
+        try:
+            idx = sys.argv.index("--channel")
+            channel_name = sys.argv[idx + 1]
+        except (IndexError, ValueError):
+            print("Usage: python -m scripts.auth_youtube [--channel <name>]")
+            return
+
     print("=" * 60)
-    print("  YouTube OAuth2 Setup — One-Time Authorization")
+    if channel_name:
+        print(f"  YouTube OAuth2 Setup — Channel: {channel_name}")
+    else:
+        print("  YouTube OAuth2 Setup — One-Time Authorization")
     print("=" * 60)
     print()
     print("This will open a browser window for Google OAuth consent.")
@@ -61,6 +79,12 @@ def main():
     print(f"  YOUTUBE_CLIENT_SECRET   = {client_secret}")
     print(f"  YOUTUBE_REFRESH_TOKEN   = {credentials.refresh_token}")
     print()
+    if channel_name:
+        print(f"  For multi-channel (Phase 9.3), add to YOUTUBE_CHANNELS JSON:")
+        print(f'    {{"name":"{channel_name}","client_id":"{client_id}",'
+              f'"client_secret":"{client_secret}",'
+              f'"refresh_token":"{credentials.refresh_token}"}}')
+        print()
     print("=" * 60)
     print()
     print("REMINDER: Make sure your OAuth consent screen is 'Published'")

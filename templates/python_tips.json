@@ -1,0 +1,162 @@
+[
+  {
+    "topic": "Python Walrus Operator",
+    "hook": "Write cleaner code with :=",
+    "code_skeleton": "# Before\ndata = get_data()\nif data:\n    process(data)\n\n# After\nif (data := get_data()):\n    process(data)",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "Python Dictionary Merge",
+    "hook": "Merge dicts in one line with |",
+    "code_skeleton": "a = {'x': 1}\nb = {'y': 2}\nmerged = a | b  # {'x': 1, 'y': 2}",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "Python match/case Pattern Matching",
+    "hook": "Switch statements finally came to Python",
+    "code_skeleton": "match command:\n    case 'quit':\n        exit()\n    case 'hello' | 'hi':\n        greet()\n    case _:\n        unknown()",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "Python F-String Debugging",
+    "hook": "Debug variables instantly with f'{x=}'",
+    "code_skeleton": "name = 'Alice'\nage = 30\nprint(f'{name=}, {age=}')\n# name='Alice', age=30",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "debugging"
+  },
+  {
+    "topic": "Python dataclasses",
+    "hook": "Stop writing __init__ manually",
+    "code_skeleton": "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: float\n    y: float\n    label: str = 'origin'",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "patterns"
+  },
+  {
+    "topic": "Python Counter Most Common",
+    "hook": "Find top N items in any iterable",
+    "code_skeleton": "from collections import Counter\n\nwords = ['apple', 'banana', 'apple', 'cherry', 'apple']\ntop = Counter(words).most_common(2)\n# [('apple', 3), ('banana', 1)]",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "stdlib"
+  },
+  {
+    "topic": "Python contextlib suppress",
+    "hook": "Ignore specific exceptions elegantly",
+    "code_skeleton": "from contextlib import suppress\n\nwith suppress(FileNotFoundError):\n    os.remove('temp.txt')\n# No crash if file doesn't exist",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "stdlib"
+  },
+  {
+    "topic": "Python functools.cache",
+    "hook": "Memoize any function in one line",
+    "code_skeleton": "from functools import cache\n\n@cache\ndef fib(n):\n    if n < 2: return n\n    return fib(n-1) + fib(n-2)\n\nfib(100)  # instant",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "performance"
+  },
+  {
+    "topic": "Python pathlib Over os.path",
+    "hook": "Modern file paths that actually make sense",
+    "code_skeleton": "from pathlib import Path\n\np = Path('data') / 'logs' / 'app.log'\np.parent.mkdir(parents=True, exist_ok=True)\np.write_text('hello')",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "stdlib"
+  },
+  {
+    "topic": "Python zip strict mode",
+    "hook": "Catch mismatched lengths with zip(strict=True)",
+    "code_skeleton": "names = ['a', 'b', 'c']\nscores = [90, 85]\n\n# This will RAISE ValueError:\nfor n, s in zip(names, scores, strict=True):\n    print(n, s)",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "safety"
+  },
+  {
+    "topic": "Python Generators for Memory",
+    "hook": "Process millions of rows without crashing",
+    "code_skeleton": "def read_huge_file(path):\n    with open(path) as f:\n        for line in f:\n            yield line.strip()\n\nfor row in read_huge_file('big.csv'):\n    process(row)  # one line at a time",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "performance"
+  },
+  {
+    "topic": "Python Type Hints Union Syntax",
+    "hook": "Use X | Y instead of Union[X, Y] in 3.10+",
+    "code_skeleton": "# Old way\nfrom typing import Union\ndef greet(name: Union[str, None]) -> str:\n    ...\n\n# New way (3.10+)\ndef greet(name: str | None) -> str:\n    ...",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "typing"
+  },
+  {
+    "topic": "Python Enum for Constants",
+    "hook": "Stop using magic strings everywhere",
+    "code_skeleton": "from enum import Enum\n\nclass Status(Enum):\n    PENDING = 'pending'\n    DONE = 'done'\n    FAILED = 'failed'\n\nif job.status == Status.DONE:\n    celebrate()",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "patterns"
+  },
+  {
+    "topic": "Python itertools.chain",
+    "hook": "Flatten multiple iterables into one",
+    "code_skeleton": "from itertools import chain\n\na = [1, 2, 3]\nb = [4, 5]\nc = [6]\n\nfor x in chain(a, b, c):\n    print(x)  # 1 2 3 4 5 6",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "stdlib"
+  },
+  {
+    "topic": "Python slots for Memory",
+    "hook": "Cut class memory usage by 40%",
+    "code_skeleton": "class Point:\n    __slots__ = ('x', 'y')\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n\n# Uses ~40% less memory than a regular class",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "performance"
+  },
+  {
+    "topic": "Python defaultdict",
+    "hook": "Never check 'if key in dict' again",
+    "code_skeleton": "from collections import defaultdict\n\nword_count = defaultdict(int)\nfor word in words:\n    word_count[word] += 1  # no KeyError!",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "stdlib"
+  },
+  {
+    "topic": "Python any() and all()",
+    "hook": "Replace loops with one-liners",
+    "code_skeleton": "scores = [85, 92, 78, 95]\n\nall_passed = all(s >= 70 for s in scores)  # True\nhas_perfect = any(s == 100 for s in scores)  # False",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "Python Exception Groups",
+    "hook": "Handle multiple errors at once in 3.11+",
+    "code_skeleton": "try:\n    async with asyncio.TaskGroup() as tg:\n        tg.create_task(fetch_a())\n        tg.create_task(fetch_b())\nexcept* ValueError as eg:\n    for e in eg.exceptions:\n        log(e)",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "error_handling"
+  },
+  {
+    "topic": "Python Unpacking with Star",
+    "hook": "Grab first, last, or middle items instantly",
+    "code_skeleton": "first, *middle, last = [1, 2, 3, 4, 5]\n# first=1, middle=[2,3,4], last=5\n\nhead, *_ = 'hello world'.split()\n# head='hello'",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "syntax"
+  },
+  {
+    "topic": "Python asyncio.gather",
+    "hook": "Run async tasks concurrently",
+    "code_skeleton": "import asyncio\n\nasync def main():\n    results = await asyncio.gather(\n        fetch_user(1),\n        fetch_user(2),\n        fetch_user(3),\n    )\n    # All 3 run concurrently!",
+    "language": "Python",
+    "content_type": "tip",
+    "category": "async"
+  }
+]

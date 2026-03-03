@@ -15,6 +15,18 @@ output/
 # ─── Documentation (sensitive/personal) ───────────────
 SETUP_GUIDE.md
 DEVELOPMENT_ROADMAP.md
+DEVELOPMENT_ROADMAP_2.md
+
+# ─── Test artifacts ───────────────────────────────────
+test_out.txt
+test_err.txt
+test_results.txt
+test_results_full.txt
+.coverage
+htmlcov/
+
+# ─── Background music history ─────────────────────────
+.bgmusic_history.json
 
 # ─── Pipeline Runtime ─────────────────────────────────
 .last-run
