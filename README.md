@@ -153,7 +153,7 @@ The AI rotates between four distinct video formats to maximize engagement:
 | **AI Thumbnails** | requests + Stability AI | AI-generated video thumbnails |
 | **Trending** | pytrends | Google Trends integration |
 | **Runtime** | Python 3.12+ | Primary runtime |
-| **CI/CD** | GitHub Actions | Scheduled (2×/day) + manual execution |
+| **CI/CD** | GitHub Actions | Scheduled (3×/day) + manual execution |
 
 <details>
 <summary><b>📂 Project Structure</b></summary>
@@ -161,7 +161,7 @@ The AI rotates between four distinct video formats to maximize engagement:
 ```text
 .
 ├── .github/workflows/
-│   ├── generate.yml              # Main pipeline (cron 2×/day + manual)
+│   ├── generate.yml              # Main pipeline (cron 3×/day + manual)
 │   ├── upload-queue.yml          # Upload retry queue
 │   ├── ci.yml                    # Test suite on push/PR
 │   └── staging.yml               # Staging environment pipeline
@@ -282,12 +282,15 @@ python -m dashboard.app
 
 ## 📅 Schedule
 
-Automated via GitHub Actions cron:
+Automated via GitHub Actions cron — optimized for US audience peak engagement:
 
-| Time (UTC) | Time (WIB) | Frequency |
-| :--- | :--- | :--- |
-| `08:00` | 15:00 | Daily |
-| `20:00` | 03:00 | Daily |
+| Time (UTC) | Time (EST) | Time (PST) | Target |
+| :--- | :--- | :--- | :--- |
+| `13:00` | 8:00 AM | 5:00 AM | Morning commute |
+| `18:00` | 1:00 PM | 10:00 AM | Lunch break |
+| `00:00` | 7:00 PM | 4:00 PM | Prime time (evening) |
+
+Plus monthly maintenance run at `03:00 UTC` on the 1st of each month.
 
 Manual trigger available via **Actions** → **Run workflow**.
 
