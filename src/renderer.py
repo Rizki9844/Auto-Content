@@ -175,6 +175,7 @@ class FrameRenderer:
         code_before: str | None = None,
         title: str = "",
         series_part: int = 0,
+        preview_image: "Image.Image | None" = None,
     ):
         self.code = code.rstrip()
         self.language = language.lower()
@@ -187,6 +188,9 @@ class FrameRenderer:
         self.code_before = code_before
         self.title = title
         self.series_part = series_part  # Phase 6.4 — 0 means not part of a series
+
+        # Phase 10.1: Pre-captured visual preview image (resized to fit panel)
+        self.preview_image = self._fit_preview_image(preview_image)
 
         # Apply active theme (Phase 4.4) — patches config before any rendering
         try:
@@ -995,6 +999,9 @@ class FrameRenderer:
         # Blinking cursor
         self._draw_cursor(draw, t, n_chars)
 
+        # Phase 10.1: CTA overlay — "Comment 'X' for code" (last seconds)
+        self._draw_cta_overlay(draw, t)
+
         # Karaoke subtitles
         self._draw_subtitles(draw, t)
 
@@ -1006,6 +1013,11 @@ class FrameRenderer:
 
     def _draw_preview_content(self, draw: ImageDraw.ImageDraw, t: float):
         """Draw dynamic content in the top preview panel."""
+        # Phase 10.1: If we have a captured preview image, use it instead
+        if self.preview_image is not None:
+            self._draw_captured_preview(draw)
+            return
+
         if self.content_type == "output_demo":
             self._draw_preview_output(draw, t)
         elif self.content_type == "quiz":
@@ -1014,6 +1026,117 @@ class FrameRenderer:
             self._draw_before_label(draw)  # overlay BEFORE label (Phase 5.6)
         else:  # tip
             self._draw_preview_tip(draw, t)
+
+    # ──────────────────────────────────────────────────────────
+    #  Phase 10.1: VISUAL PREVIEW + CTA OVERLAY
+    # ──────────────────────────────────────────────────────────
+
+    def _fit_preview_image(self, img: "Image.Image | None") -> "Image.Image | None":
+        """Resize a captured preview image to fit the preview panel area."""
+        if img is None:
+            return None
+        panel_w = self.width - 2 * config.PADDING - 4   # inner panel width
+        panel_h = config.PREVIEW_BOTTOM - (config.PREVIEW_Y + config.PREVIEW_CHROME_H) - 10
+        # Maintain aspect ratio, fit within bounds
+        img_ratio = img.width / max(img.height, 1)
+        panel_ratio = panel_w / max(panel_h, 1)
+        if img_ratio > panel_ratio:
+            new_w = panel_w
+            new_h = int(panel_w / max(img_ratio, 0.01))
+        else:
+            new_h = panel_h
+            new_w = int(panel_h * img_ratio)
+        try:
+            return img.resize((max(new_w, 1), max(new_h, 1)), Image.LANCZOS)
+        except Exception:
+            return img.resize((max(new_w, 1), max(new_h, 1)))
+
+    def _draw_captured_preview(self, draw: ImageDraw.ImageDraw):
+        """Paste the pre-captured preview image into the preview panel area."""
+        if self.preview_image is None:
+            return
+        panel_x = config.PADDING + 2
+        panel_top = config.PREVIEW_Y + config.PREVIEW_CHROME_H + 1
+        panel_w = self.width - 2 * config.PADDING - 4
+        panel_h = config.PREVIEW_BOTTOM - panel_top - 5
+        # Center the image within the panel
+        x_offset = panel_x + (panel_w - self.preview_image.width) // 2
+        y_offset = panel_top + (panel_h - self.preview_image.height) // 2
+        # Paste onto the frame Image — we access via draw's internal image
+        try:
+            # draw._image is the underlying PIL Image
+            draw._image.paste(self.preview_image, (x_offset, y_offset))
+        except Exception:
+            # Fallback: draw a placeholder rect
+            draw.rectangle(
+                [panel_x, panel_top, panel_x + panel_w, panel_top + panel_h],
+                fill="#161b22",
+            )
+            draw.text(
+                (self.width // 2, panel_top + panel_h // 2),
+                "[ Preview ]", fill="#484f58", font=self.chrome_font, anchor="mm",
+            )
+
+    def _draw_cta_overlay(self, draw: ImageDraw.ImageDraw, t: float):
+        """Draw 'Comment X for code' CTA pill in the last seconds before outro."""
+        if not config.ENABLE_CTA_OVERLAY:
+            return
+        # Only show in the window: (outro_start - CTA_LEAD_TIME) to outro_start
+        cta_start = self.outro_start - config.CTA_LEAD_TIME
+        if t < cta_start or t >= self.outro_start:
+            return
+
+        elapsed = t - cta_start
+        # Fade in over 0.5s
+        alpha = min(elapsed / 0.5, 1.0)
+        if alpha < 0.05:
+            return
+
+        # Build CTA text from language
+        lang_upper = self.language.upper()
+        _lang_display = {
+            "javascript": "JS", "typescript": "TS", "python": "PYTHON",
+            "html": "HTML", "css": "CSS", "bash": "BASH", "java": "JAVA",
+            "go": "GO", "rust": "RUST", "c": "C", "cpp": "C++",
+            "csharp": "C#", "ruby": "RUBY", "php": "PHP", "swift": "SWIFT",
+            "kotlin": "KOTLIN", "dart": "DART", "sql": "SQL", "r": "R",
+        }
+        keyword = _lang_display.get(self.language, lang_upper[:8])
+        cta_text = f'\U0001f4ac  Comment "{keyword}" for code'
+
+        cx = self.width // 2
+        cy = config.CTA_Y
+
+        # Measure text
+        try:
+            bbox = self.chrome_font.getbbox(cta_text)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
+        except Exception:
+            tw, th = 300, 20
+
+        pill_w = tw + 40
+        pill_h = th + 20
+        pill_x = cx - pill_w // 2
+        pill_y = cy - pill_h // 2
+
+        # Semi-transparent dark background (approximation — full alpha needs composite)
+        bg_color = (1, 4, 9)  # very dark, near-black
+        draw.rounded_rectangle(
+            [pill_x, pill_y, pill_x + pill_w, pill_y + pill_h],
+            radius=pill_h // 2, fill=bg_color,
+        )
+        # Border
+        draw.rounded_rectangle(
+            [pill_x, pill_y, pill_x + pill_w, pill_y + pill_h],
+            radius=pill_h // 2, outline="#30363d", width=1,
+        )
+        # Text
+        text_color = config.OUTRO_CTA_COLOR  # gold #ffd700
+        draw.text(
+            (cx, cy), cta_text,
+            fill=text_color, font=self.chrome_font, anchor="mm",
+        )
 
     def _draw_preview_tip(self, draw: ImageDraw.ImageDraw, t: float):
         """Draw styled concept card — bobbing emoji, gradient badge, tag chips (Phase 5.6)."""

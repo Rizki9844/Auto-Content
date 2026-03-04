@@ -324,3 +324,20 @@ DASHBOARD_SECRET_KEY = os.environ.get("DASHBOARD_SECRET_KEY", "dev-secret-change
 # "pillow" = Phase 4.6 generator | "ai" = AI background + Pillow overlay
 THUMBNAIL_STYLE = os.environ.get("THUMBNAIL_STYLE", "pillow")
 STABILITY_API_KEY = os.environ.get("STABILITY_API_KEY", "")
+
+
+# ══════════════════════════════════════════════════════════════
+#  VISUAL PREVIEW  (Phase 10.1)
+# ══════════════════════════════════════════════════════════════
+# Set to "1" to generate a real visual preview in the top panel.
+# HTML/CSS/JS → Playwright browser screenshot; Python/Bash → terminal panel.
+ENABLE_VISUAL_PREVIEW = os.environ.get("ENABLE_VISUAL_PREVIEW", "1") == "1"
+
+# Playwright headless browser settings
+PLAYWRIGHT_TIMEOUT_MS = int(os.environ.get("PLAYWRIGHT_TIMEOUT_MS", "5000"))
+PLAYWRIGHT_VIEWPORT = (1000, 560)  # (width, height) for browser capture
+
+# CTA overlay — "Comment 'X' for code" pill in last seconds before outro
+ENABLE_CTA_OVERLAY = os.environ.get("ENABLE_CTA_OVERLAY", "1") == "1"
+CTA_LEAD_TIME = float(os.environ.get("CTA_LEAD_TIME", "4.0"))  # seconds before outro
+CTA_Y = 1560  # y-position of CTA pill

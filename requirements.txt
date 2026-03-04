@@ -29,6 +29,7 @@ flask>=3.0.0
 
 # ─── AI Thumbnail (Phase 9.5, optional) ──────────────
 requests>=2.31.0
-
+# ─── Visual Preview (Phase 10.1, headless browser) ───
+playwright>=1.40.0
 # ─── TTS Fallback (Phase 8.1, optional) ──────────────
 gTTS>=2.4.0

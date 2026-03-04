@@ -72,6 +72,17 @@ def create_video(
         duration = 59.0
         audio = audio.subclipped(0, 59.0)
 
+    # ── Phase 10.1: Generate visual preview image ──────────────
+    preview_image = None
+    try:
+        from src.preview_renderer import generate_preview_image
+        preview_image = generate_preview_image(code, language, code_output)
+        if preview_image:
+            logger.info(f"Visual preview generated: {preview_image.size}")
+    except Exception as e:
+        logger.warning(f"Preview generation failed (non-critical): {e}")
+        preview_image = None
+
     # ── Initialize frame renderer ─────────────────────────────
     renderer = FrameRenderer(
         code=code,
@@ -84,6 +95,7 @@ def create_video(
         code_before=code_before,
         title=title,
         series_part=series_part,
+        preview_image=preview_image,
     )
 
     # ── Create video clip from frame function ─────────────────
