@@ -119,12 +119,23 @@ async def _capture_with_playwright(
     viewport: tuple[int, int] = (1000, 600),
     timeout_ms: int = 5000,
 ) -> Image.Image | None:
-    """Launch headless Chromium, render HTML, return screenshot as PIL Image."""
+    """Launch headless Chromium/Chrome, render HTML, return screenshot as PIL Image.
+
+    Tries Playwright's own Chromium first; if not yet downloaded, falls back
+    to any locally-installed Chrome or Edge found on the system.
+    """
     try:
         from playwright.async_api import async_playwright
     except ImportError:
         logger.warning("playwright not installed — skipping browser preview")
         return None
+
+    # Candidate local Chrome/Edge paths (Windows)
+    _LOCAL_CHROME_PATHS = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ]
 
     tmp_path = None
     try:
@@ -136,7 +147,27 @@ async def _capture_with_playwright(
             tmp_path = f.name
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            # Try default Playwright Chromium first
+            launch_kwargs: dict = {"headless": True}
+            try:
+                browser = await p.chromium.launch(**launch_kwargs)
+            except Exception as e:
+                # Playwright's own Chromium not downloaded yet — try local Chrome
+                if "Executable doesn't exist" in str(e) or "executable" in str(e).lower():
+                    local_exe = next(
+                        (path for path in _LOCAL_CHROME_PATHS if Path(path).exists()),
+                        None,
+                    )
+                    if local_exe:
+                        logger.info(f"Using local Chrome: {local_exe}")
+                        launch_kwargs["executable_path"] = local_exe
+                        browser = await p.chromium.launch(**launch_kwargs)
+                    else:
+                        logger.warning("No local Chrome/Edge found — skipping browser preview")
+                        return None
+                else:
+                    raise
+
             page = await browser.new_page(
                 viewport={"width": viewport[0], "height": viewport[1]},
             )
