@@ -106,7 +106,9 @@ jobs:
         #   YOUTUBE_API_KEY: $\{{ secrets.YOUTUBE_API_KEY }}
         run: python -m src.main --fetch-metrics
 
-      # ── Keep repository active (prevent schedule disable) ───
+      # ── Keep repository active (prevent GitHub auto-disabling scheduled workflows) ───
+      # GitHub disables cron workflows after 60 days of no repo activity.
+      # This step makes an empty commit only when needed (no file changes).
       - name: Keep repository active
         if: always()
         continue-on-error: true
@@ -117,9 +119,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
           git pull --rebase origin main || true
-          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .last-run
-          git add -f .last-run
-          git diff --cached --quiet || {
-            git commit -m "chore: pipeline run $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # Only push a keep-alive if the last real commit is older than 50 days
+          LAST_COMMIT_DATE=$(git log -1 --format=%ct)
+          NOW=$(date +%s)
+          DAYS_SINCE=$(( (NOW - LAST_COMMIT_DATE) / 86400 ))
+          if [ "$DAYS_SINCE" -ge 50 ]; then
+            git commit --allow-empty -m "chore: keep-alive (${DAYS_SINCE} days since last commit)"
             git push || echo "::warning::Keep-alive push failed (non-critical)"
-          }
+          else
+            echo "Last commit was ${DAYS_SINCE} days ago — no keep-alive needed"
+          fi
