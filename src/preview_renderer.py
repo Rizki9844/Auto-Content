@@ -114,6 +114,15 @@ font-size:16px; white-space:pre-wrap; }}</style>
 </head><body><pre>{escaped}</pre></body></html>"""
 
 
+def _build_visual_ui_html(html_code: str) -> str:
+    """Prepare Visual UI HTML code for rendering.
+    
+    The LLM outputs complete self-contained HTML.
+    We just return it, ensuring it represents a full page.
+    """
+    return html_code.strip()
+
+
 async def _capture_with_playwright(
     html_content: str,
     viewport: tuple[int, int] = (1000, 600),
@@ -191,6 +200,112 @@ async def _capture_with_playwright(
                 pass
 
 
+async def _capture_animated_with_playwright(
+    html_content: str,
+    viewport: tuple[int, int] = (1000, 600),
+    timeout_ms: int = 5000,
+    frame_count: int = 30,  # 30 frames for a smooth snippet
+    capture_duration_ms: int = 2000,
+) -> list[Image.Image] | None:
+    """Capture multiple frames over a duration for animated preview."""
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        logger.warning("playwright not installed — skipping animated browser preview")
+        return None
+
+    _LOCAL_CHROME_PATHS = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ]
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
+            f.write(html_content)
+            tmp_path = f.name
+
+        async with async_playwright() as p:
+            launch_kwargs: dict = {"headless": True}
+            try:
+                browser = await p.chromium.launch(**launch_kwargs)
+            except Exception as e:
+                if "Executable doesn't exist" in str(e) or "executable" in str(e).lower():
+                    local_exe = next((path for path in _LOCAL_CHROME_PATHS if Path(path).exists()), None)
+                    if local_exe:
+                        launch_kwargs["executable_path"] = local_exe
+                        browser = await p.chromium.launch(**launch_kwargs)
+                    else:
+                        return None
+                else:
+                    raise
+
+            page = await browser.new_page(viewport={"width": viewport[0], "height": viewport[1]})
+            await page.goto(f"file://{tmp_path}", wait_until="networkidle", timeout=timeout_ms)
+            
+            # Inject a fake CSS/SVG cursor on top of interactive elements (if any) to simulate real interaction
+            await page.evaluate("""
+                () => {
+                    const btn = document.querySelector('button, input, .btn, .button, [role="button"], a');
+                    if (btn) {
+                        const rect = btn.getBoundingClientRect();
+                        const cursor = document.createElement('div');
+                        cursor.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 3.21V20.8C5.5 21.45 6.27 21.8 6.76 21.36L11.44 17H18.5C19.05 17 19.5 16.55 19.5 16V4C19.5 3.45 19.05 3 18.5 3H6.46C5.9 3 5.5 3.06 5.5 3.21Z" fill="white" stroke="black" stroke-width="1.5"/></svg>';
+                        cursor.style.position = 'fixed';
+                        cursor.style.left = (rect.left + rect.width / 2) + 'px';
+                        cursor.style.top = (rect.top + rect.height / 2) + 'px';
+                        cursor.style.zIndex = '999999';
+                        cursor.style.pointerEvents = 'none';
+                        // Add a subtle click bounce animation CSS
+                        const style = document.createElement('style');
+                        style.textContent = '@keyframes __autoClick { 0%,100% {transform:scale(1);} 50% {transform:scale(0.85);}}';
+                        document.head.appendChild(style);
+                        // Bind it to the click class that AI script might trigger
+                        setInterval(() => {
+                           cursor.style.animation = '__autoClick 0.3s ease';
+                           setTimeout(()=> cursor.style.animation = '', 300);
+                        }, 1500); // sync with typical AI JS loop
+                        document.body.appendChild(cursor);
+                    }
+                }
+            """)
+            
+            # Allow initial load/animations to start
+            await page.wait_for_timeout(500)
+
+            frames = []
+            import io
+            import time
+
+            interval_ms = capture_duration_ms / frame_count
+            for _ in range(frame_count):
+                start_time = time.time()
+                
+                # Use JPEG for faster capture / less memory overhead
+                screenshot_bytes = await page.screenshot(type="jpeg", quality=85)
+                img = Image.open(io.BytesIO(screenshot_bytes)).convert("RGB")
+                frames.append(img)
+                
+                elapsed_ms = (time.time() - start_time) * 1000
+                wait_ms = max(0.0, interval_ms - elapsed_ms)
+                if wait_ms > 0:
+                    await page.wait_for_timeout(wait_ms)
+
+            await browser.close()
+            return frames
+            
+    except Exception as e:
+        logger.warning(f"Animated Playwright capture failed: {e}")
+        return None
+    finally:
+        if tmp_path:
+            try:
+                Path(tmp_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
 def _capture_browser_preview(
     code: str,
     language: str,
@@ -207,6 +322,34 @@ def _capture_browser_preview(
         )
     except Exception as e:
         logger.warning(f"Browser preview failed: {e}")
+        return None
+
+
+def generate_animated_preview(
+    html_code: str,
+) -> list[Image.Image] | None:
+    """Generate a multi-frame animated preview for visual UI content."""
+    if not config.ENABLE_VISUAL_PREVIEW:
+        return None
+
+    import asyncio
+    viewport = config.PLAYWRIGHT_VIEWPORT
+    timeout = config.PLAYWRIGHT_TIMEOUT_MS
+
+    logger.info("Generating animated browser preview for visual_ui content")
+    html_page = _build_visual_ui_html(html_code)
+    try:
+        return asyncio.run(
+            _capture_animated_with_playwright(
+                html_page, 
+                viewport, 
+                timeout,
+                frame_count=30,
+                capture_duration_ms=2000,
+            )
+        )
+    except Exception as e:
+        logger.warning(f"Animated browser preview failed: {e}")
         return None
 
 

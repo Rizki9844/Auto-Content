@@ -1,9 +1,9 @@
 """
-Content Quality Scoring — Phase 3.1
+Content Quality Scoring — Phase 3.1 + Phase 11
 
 Evaluates generated content quality on a 0–100 scale across multiple dimensions:
   - Script word count in ideal range (40–80 words)
-  - Code line count in ideal range (3–15 lines)
+  - Code line count in ideal range (3–10 for coding_tips, 5–15 for visual_ui)
   - Hashtag count (5–8)
   - Code has proper indentation (not all flat)
   - Content type diversity (bonus if different from recent)
@@ -13,6 +13,8 @@ If score < threshold → signal to regenerate.
 import logging
 import re
 
+from src import config
+
 logger = logging.getLogger(__name__)
 
 # Quality thresholds
@@ -20,7 +22,8 @@ QUALITY_THRESHOLD = 50  # Minimum acceptable score (0–100)
 
 # Ideal ranges (min, max) for scoring dimensions
 _SCRIPT_WORD_RANGE = (40, 80)
-_CODE_LINE_RANGE = (3, 10)
+_CODE_LINE_RANGE_CODING = (3, 10)    # coding_tips mode
+_CODE_LINE_RANGE_VISUAL = (5, 15)    # visual_ui mode (display_code)
 _HASHTAG_RANGE = (5, 8)
 _CODE_CHAR_MAX_PER_LINE = 60  # Lines longer than this are penalized
 
@@ -59,13 +62,15 @@ def score_content(content: dict, recent_types: list[str] | None = None) -> dict:
     code = content.get("code", "")
     code_lines = [line for line in code.splitlines() if line.strip()]
     line_count = len(code_lines)
+    # Phase 11: Pilih range berdasarkan content mode
+    _code_range = _CODE_LINE_RANGE_VISUAL if config.CONTENT_MODE == "visual_ui" else _CODE_LINE_RANGE_CODING
     breakdown["code_lines"] = _range_score(
-        line_count, _CODE_LINE_RANGE[0], _CODE_LINE_RANGE[1], 25
+        line_count, _code_range[0], _code_range[1], 25
     )
-    if line_count < _CODE_LINE_RANGE[0]:
-        reasons.append(f"Code too short ({line_count} lines, ideal {_CODE_LINE_RANGE[0]}-{_CODE_LINE_RANGE[1]})")
-    elif line_count > _CODE_LINE_RANGE[1]:
-        reasons.append(f"Code too long ({line_count} lines, ideal {_CODE_LINE_RANGE[0]}-{_CODE_LINE_RANGE[1]})")
+    if line_count < _code_range[0]:
+        reasons.append(f"Code too short ({line_count} lines, ideal {_code_range[0]}-{_code_range[1]})")
+    elif line_count > _code_range[1]:
+        reasons.append(f"Code too long ({line_count} lines, ideal {_code_range[0]}-{_code_range[1]})")
 
     # ── 3. Hashtag count (0–15 points) ────────────────────────
     hashtags = content.get("hashtags", [])

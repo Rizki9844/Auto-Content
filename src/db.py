@@ -82,6 +82,37 @@ def get_past_topics(limit: int = 50) -> list[dict]:
         return []
 
 
+def get_top_performing_topics(limit: int = 3, content_mode: str = "visual_ui") -> list[dict]:
+    """
+    Retrieve the best-performing past videos based on view count and likes.
+    Used to inject few-shot examples of 'what works' into the LLM prompt.
+    """
+    try:
+        col = _get_collection()
+        # Filter by success and having metric data
+        query = {
+            "status": "success",
+            "metrics.views": {"$exists": True},
+        }
+        if content_mode == "visual_ui":
+            query["content_type"] = {"$in": ["visual_ui", "animation", "creative_design", "landing_page", "login_page", "portfolio"]}
+        else:
+            query["content_type"] = {"$in": ["tip", "quiz", "before_after"]}
+            
+        docs = (
+            col.find(
+                query,
+                {"topic": 1, "title": 1, "script": 1, "code": 1, "metrics": 1, "content_type": 1, "_id": 0},
+            )
+            .sort([("metrics.views", -1), ("metrics.likes", -1)])
+            .limit(limit)
+        )
+        return list(docs)
+    except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+        logger.warning(f"MongoDB unreachable, cannot get top topics: {e}")
+        return []
+
+
 def save_record(data: dict) -> str | None:
     """
     Insert a new content record into MongoDB.

@@ -175,7 +175,7 @@ class FrameRenderer:
         code_before: str | None = None,
         title: str = "",
         series_part: int = 0,
-        preview_image: "Image.Image | None" = None,
+        preview_image: "Image.Image | list[Image.Image] | None" = None,
     ):
         self.code = code.rstrip()
         self.language = language.lower()
@@ -189,8 +189,8 @@ class FrameRenderer:
         self.title = title
         self.series_part = series_part  # Phase 6.4 — 0 means not part of a series
 
-        # Phase 10.1: Pre-captured visual preview image (resized to fit panel)
-        self.preview_image = self._fit_preview_image(preview_image)
+        # Phase 10.1 & 11.2: Pre-captured visual preview image(s)
+        self.preview_image = self._fit_preview_images(preview_image)
 
         # Apply active theme (Phase 4.4) — patches config before any rendering
         try:
@@ -558,11 +558,12 @@ class FrameRenderer:
             anchor="mm",
         )
 
-        # Title text (word-wrap)
+        # Title text (gradient word-wrap)
         title_text = self.title.replace(" #Shorts", "").replace(" #shorts", "").strip()
-        self._draw_wrapped_text(
+        self._draw_wrapped_text_gradient(
             draw, title_text, self.title_font,
-            config.INTRO_TITLE_COLOR, center_y, max_width=self.width - 160,
+            _hex_to_rgb(config.ACCENT_GRADIENT_LEFT), _hex_to_rgb(config.ACCENT_GRADIENT_RIGHT), 
+            center_y, max_width=self.width - 160,
         )
 
         # Channel name
@@ -611,9 +612,10 @@ class FrameRenderer:
         cy = self.height // 2
 
         # ── Decorative code comment (top) ─────────────────────
+        comment_text = "<!-- TODO: hit subscribe 😄 -->" if config.CONTENT_MODE == "visual_ui" else "// TODO: hit subscribe 😄"
         draw.text(
             (cx, cy - 200),
-            "// TODO: hit subscribe 😄",
+            comment_text,
             fill="#484f58",
             font=self.title_sub_font,
             anchor="mm",
@@ -672,9 +674,10 @@ class FrameRenderer:
             draw.line([(x, bar_y2), (x, bar_y2 + 3)], fill=c)
 
         # ── Tagline ───────────────────────────────────
+        tagline = "New UI designs every day! ✨" if config.CONTENT_MODE == "visual_ui" else "New coding tips every day! 🚀"
         draw.text(
             (cx, cy + 165),
-            "New coding tips every day! 🚀",
+            tagline,
             fill=config.OUTRO_CTA_COLOR,
             font=self.outro_sub_font,
             anchor="mm",
@@ -742,6 +745,54 @@ class FrameRenderer:
                 (self.width // 2, y),
                 line, fill=color, font=font, anchor="ma",
             )
+
+    def _draw_wrapped_text_gradient(self, draw, text, font, color_left, color_right, center_y, max_width):
+        """Draw text centered with word-wrapping and a horizontal gradient fill."""
+        words = text.split()
+        lines = []
+        current_line = ""
+
+        for word in words:
+            test = f"{current_line} {word}".strip()
+            bbox = font.getbbox(test)
+            if bbox[2] - bbox[0] > max_width and current_line:
+                lines.append(current_line)
+                current_line = word
+            else:
+                current_line = test
+        if current_line:
+            lines.append(current_line)
+
+        line_spacing = int(font.size * 1.3)
+        total_h = len(lines) * line_spacing
+        start_y = center_y - total_h // 2
+
+        # Create a temporary image for the text mask
+        mask = Image.new("L", (self.width, self.height), 0)
+        mask_draw = ImageDraw.Draw(mask)
+
+        for i, line in enumerate(lines):
+            y = start_y + i * line_spacing
+            mask_draw.text(
+                (self.width // 2, y),
+                line, fill=255, font=font, anchor="ma",
+            )
+
+        # Paste gradient using text mask
+        bbox = mask.getbbox()
+        if not bbox:
+            return
+            
+        grad = Image.new("RGB", (self.width, self.height))
+        grad_draw = ImageDraw.Draw(grad)
+        
+        left, top, right, bottom = bbox
+        for x in range(left, right):
+            t = (x - left) / max(right - left, 1)
+            c = _lerp_color(color_left, color_right, t)
+            grad_draw.line([(x, top), (x, bottom)], fill=c)
+
+        draw._image.paste(grad, (0, 0), mask)
 
     # ──────────────────────────────────────────────────────────
     #  ANIMATION HELPERS  (Phase 5)
@@ -1013,9 +1064,9 @@ class FrameRenderer:
 
     def _draw_preview_content(self, draw: ImageDraw.ImageDraw, t: float):
         """Draw dynamic content in the top preview panel."""
-        # Phase 10.1: If we have a captured preview image, use it instead
+        # Phase 10.1 & 11.2: If we have captured preview images, use them instead
         if self.preview_image is not None:
-            self._draw_captured_preview(draw)
+            self._draw_captured_preview(draw, t)
             return
 
         if self.content_type == "output_demo":
@@ -1031,7 +1082,15 @@ class FrameRenderer:
     #  Phase 10.1: VISUAL PREVIEW + CTA OVERLAY
     # ──────────────────────────────────────────────────────────
 
-    def _fit_preview_image(self, img: "Image.Image | None") -> "Image.Image | None":
+    def _fit_preview_images(
+        self, imgs: "Image.Image | list[Image.Image] | None"
+    ) -> "Image.Image | list[Image.Image] | None":
+        if imgs is None: return None
+        if isinstance(imgs, list):
+            return [img for img in (self._fit_single_preview_image(img) for img in imgs) if img is not None]
+        return self._fit_single_preview_image(imgs)
+
+    def _fit_single_preview_image(self, img: "Image.Image | None") -> "Image.Image | None":
         """Resize a captured preview image to fit the preview panel area."""
         if img is None:
             return None
@@ -1051,30 +1110,40 @@ class FrameRenderer:
         except Exception:
             return img.resize((max(new_w, 1), max(new_h, 1)))
 
-    def _draw_captured_preview(self, draw: ImageDraw.ImageDraw):
-        """Paste the pre-captured preview image into the preview panel area."""
-        if self.preview_image is None:
-            return
+    def _get_animated_preview_frame(self, t: float) -> "Image.Image | None":
+        if self.preview_image is None: return None
+        if not isinstance(self.preview_image, list): return self.preview_image
+        if not self.preview_image: return None
+        
+        # Loop animation at 15 FPS
+        fps = 15.0
+        frame_idx = int(t * fps) % len(self.preview_image)
+        return self.preview_image[frame_idx]
+
+    def _draw_captured_preview(self, draw: ImageDraw.ImageDraw, t: float):
+        """Paste the pre-captured animated/static preview image into the panel."""
+        img_frame = self._get_animated_preview_frame(t)
+        if img_frame is None: return
+        
         panel_x = config.PADDING + 2
         panel_top = config.PREVIEW_Y + config.PREVIEW_CHROME_H + 1
         panel_w = self.width - 2 * config.PADDING - 4
         panel_h = config.PREVIEW_BOTTOM - panel_top - 5
         # Center the image within the panel
-        x_offset = panel_x + (panel_w - self.preview_image.width) // 2
-        y_offset = panel_top + (panel_h - self.preview_image.height) // 2
+        x_offset = panel_x + (panel_w - img_frame.width) // 2
+        y_offset = panel_top + (panel_h - img_frame.height) // 2
         # Paste onto the frame Image — we access via draw's internal image
         try:
-            # draw._image is the underlying PIL Image
-            draw._image.paste(self.preview_image, (x_offset, y_offset))
+            draw._image.paste(img_frame, (x_offset, y_offset))
         except Exception:
-            # Fallback: draw a placeholder rect
+            # Fallback
             draw.rectangle(
                 [panel_x, panel_top, panel_x + panel_w, panel_top + panel_h],
                 fill="#161b22",
             )
             draw.text(
                 (self.width // 2, panel_top + panel_h // 2),
-                "[ Preview ]", fill="#484f58", font=self.chrome_font, anchor="mm",
+                "[ Preview Error ]", fill="#484f58", font=self.chrome_font, anchor="mm",
             )
 
     def _draw_cta_overlay(self, draw: ImageDraw.ImageDraw, t: float):
@@ -1093,16 +1162,19 @@ class FrameRenderer:
             return
 
         # Build CTA text from language
-        lang_upper = self.language.upper()
-        _lang_display = {
-            "javascript": "JS", "typescript": "TS", "python": "PYTHON",
-            "html": "HTML", "css": "CSS", "bash": "BASH", "java": "JAVA",
-            "go": "GO", "rust": "RUST", "c": "C", "cpp": "C++",
-            "csharp": "C#", "ruby": "RUBY", "php": "PHP", "swift": "SWIFT",
-            "kotlin": "KOTLIN", "dart": "DART", "sql": "SQL", "r": "R",
-        }
-        keyword = _lang_display.get(self.language, lang_upper[:8])
-        cta_text = f'\U0001f4ac  Comment "{keyword}" for code'
+        if config.CONTENT_MODE == "visual_ui":
+            cta_text = '💬  Comment "SOURCE" for code'
+        else:
+            lang_upper = self.language.upper()
+            _lang_display = {
+                "javascript": "JS", "typescript": "TS", "python": "PYTHON",
+                "html": "HTML", "css": "CSS", "bash": "BASH", "java": "JAVA",
+                "go": "GO", "rust": "RUST", "c": "C", "cpp": "C++",
+                "csharp": "C#", "ruby": "RUBY", "php": "PHP", "swift": "SWIFT",
+                "kotlin": "KOTLIN", "dart": "DART", "sql": "SQL", "r": "R",
+            }
+            keyword = _lang_display.get(self.language, lang_upper[:8])
+            cta_text = f'\U0001f4ac  Comment "{keyword}" for code'
 
         cx = self.width // 2
         cy = config.CTA_Y
@@ -1150,12 +1222,14 @@ class FrameRenderer:
             fill="#ffd700", font=self.title_font, anchor="mm",
         )
 
-        # Title text (word-wrapped)
+        # Title text (gradient word-wrapped)
         title = self.title.replace(" #Shorts", "").replace(" #shorts", "").strip()
         if title:
-            self._draw_wrapped_text(
+            c_left = _hex_to_rgb(config.ACCENT_GRADIENT_LEFT)
+            c_right = _hex_to_rgb(config.ACCENT_GRADIENT_RIGHT)
+            self._draw_wrapped_text_gradient(
                 draw, title, self.title_sub_font,
-                "#e6edf3", top + 240, max_width=self.width - 160,
+                c_left, c_right, top + 240, max_width=self.width - 160,
             )
 
         # Full-width language badge with accent fill

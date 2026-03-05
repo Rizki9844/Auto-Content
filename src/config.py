@@ -28,10 +28,13 @@ FONT_BOLD = str(FONTS_DIR / "JetBrainsMono-Bold.ttf")
 
 
 # ══════════════════════════════════════════════════════════════
-#  VIDEO DIMENSIONS
+#  VIDEO DIMENSIONS & RESOLUTION (Phase 11.5)
 # ══════════════════════════════════════════════════════════════
-VIDEO_WIDTH = 1080
-VIDEO_HEIGHT = 1920
+VIDEO_RESOLUTION = os.environ.get("VIDEO_RESOLUTION", "1080p").lower()
+SCALE = 2 if VIDEO_RESOLUTION == "4k" else 1
+
+VIDEO_WIDTH = 1080 * SCALE
+VIDEO_HEIGHT = 1920 * SCALE
 VIDEO_FPS = 30
 
 
@@ -58,55 +61,62 @@ PREVIEW_RUNNING_COLOR = "#58a6ff"     # spinner + "Running..." text
 
 
 # ══════════════════════════════════════════════════════════════
-#  SPLIT-SCREEN LAYOUT (1080×1920 canvas)
+#  SPLIT-SCREEN LAYOUT (Canvas config)
 # ══════════════════════════════════════════════════════════════
-PADDING = 40
+PADDING = 40 * SCALE
 
 # ── Preview panel (top) — output / demo / concept ────────────
-PREVIEW_Y = 50
-PREVIEW_CHROME_H = 40
-PREVIEW_CONTENT_Y = PREVIEW_Y + PREVIEW_CHROME_H + 15   # 105
-PREVIEW_CODE_TOP = PREVIEW_Y + PREVIEW_CHROME_H + 25    # 115
-PREVIEW_BOTTOM = 680
+PREVIEW_Y = 50 * SCALE
+PREVIEW_CHROME_H = 40 * SCALE
+PREVIEW_CONTENT_Y = PREVIEW_Y + PREVIEW_CHROME_H + (15 * SCALE)
+PREVIEW_CODE_TOP = PREVIEW_Y + PREVIEW_CHROME_H + (25 * SCALE)
+PREVIEW_BOTTOM = 680 * SCALE
 
 # ── Gradient divider ─────────────────────────────────────────
-DIVIDER_Y = 700
+DIVIDER_Y = 700 * SCALE
 
 # ── Code editor panel (bottom) — typing animation ────────────
-CHROME_Y = 730
-CHROME_H = 44
-CODE_TOP = CHROME_Y + CHROME_H + 25        # 799
-CODE_LEFT = PADDING + 72                    # 122
-LINE_NUM_RIGHT_X = PADDING + 52             # 102
-GUTTER_X = PADDING + 62                     # 112
+CHROME_Y = 730 * SCALE
+CHROME_H = 44 * SCALE
+CODE_TOP = CHROME_Y + CHROME_H + (25 * SCALE)
+CODE_LEFT = PADDING + (72 * SCALE)
+LINE_NUM_RIGHT_X = PADDING + (52 * SCALE)
+GUTTER_X = PADDING + (62 * SCALE)
 
 # ── Subtitles & watermark ────────────────────────────────────
-SUBTITLE_Y = 1480
-WATERMARK_Y = 1840
+SUBTITLE_Y = 1480 * SCALE
+WATERMARK_Y = 1840 * SCALE
+
+# ── CTA Overlay (Phase 10.1) ─────────────────────────────────
+CTA_Y = 1750 * SCALE
+CTA_HEIGHT = 80 * SCALE
+CTA_RADIUS = 40 * SCALE
 
 
 # ══════════════════════════════════════════════════════════════
 #  FONT SIZES
 # ══════════════════════════════════════════════════════════════
-CODE_FONT_SIZE = 26
-LINE_NUM_FONT_SIZE = 20
-SUBTITLE_FONT_SIZE = 48
-WATERMARK_FONT_SIZE = 16
-CHROME_FONT_SIZE = 15
-TITLE_FONT_SIZE = 48
-TITLE_SUB_FONT_SIZE = 28
-OUTPUT_FONT_SIZE = 22
-OUTRO_FONT_SIZE = 40
-OUTRO_SUB_FONT_SIZE = 28
-PREVIEW_CODE_FONT_SIZE = 22
-PREVIEW_LINE_NUM_SIZE = 18
+CODE_FONT_SIZE = 26 * SCALE
+LINE_NUM_FONT_SIZE = 20 * SCALE
+SUBTITLE_FONT_SIZE = 48 * SCALE
+WATERMARK_FONT_SIZE = 16 * SCALE
+CHROME_FONT_SIZE = 15 * SCALE
+TITLE_FONT_SIZE = 48 * SCALE
+TITLE_SUB_FONT_SIZE = 28 * SCALE
+OUTPUT_FONT_SIZE = 22 * SCALE
+OUTRO_FONT_SIZE = 40 * SCALE
+OUTRO_SUB_FONT_SIZE = 28 * SCALE
+PREVIEW_CODE_FONT_SIZE = 22 * SCALE
+PREVIEW_LINE_NUM_SIZE = 18 * SCALE
+CTA_FONT_SIZE = 32 * SCALE
+
 
 # ══════════════════════════════════════════════════════════════
 #  ANIMATION TIMING
 # ══════════════════════════════════════════════════════════════
-TYPING_CPS = 18            # characters per second (slower = more readable)
-CURSOR_BLINK_HZ = 3        # blinks per second
-LINE_SLIDE_OFFSET = 60     # pixels slide-in from left for each new line (Phase 5.5)
+TYPING_CPS = 18
+CURSOR_BLINK_HZ = 3
+LINE_SLIDE_OFFSET = 60 * SCALE     # pixels slide-in from left for each new line
 TYPING_DELAY_START = 0.3   # seconds of pause before typing starts
 TYPING_DELAY_END = 1.0     # seconds of pause after typing finishes
 
@@ -341,3 +351,44 @@ PLAYWRIGHT_VIEWPORT = (1000, 560)  # (width, height) for browser capture
 ENABLE_CTA_OVERLAY = os.environ.get("ENABLE_CTA_OVERLAY", "1") == "1"
 CTA_LEAD_TIME = float(os.environ.get("CTA_LEAD_TIME", "4.0"))  # seconds before outro
 CTA_Y = 1560  # y-position of CTA pill
+
+
+# ══════════════════════════════════════════════════════════════
+#  CONTENT MODE  (Phase 11)
+# ══════════════════════════════════════════════════════════════
+# "coding_tips" = mode asli (tip/quiz/before_after)
+# "visual_ui"   = mode baru (visual UI/animation showcase)
+CONTENT_MODE = os.environ.get("CONTENT_MODE", "visual_ui")
+
+# Tipe konten visual UI
+VISUAL_UI_TYPES = [
+    "landing_page", "login_page", "portfolio",
+    "animation", "creative_ui",
+]
+
+# Kategori visual UI untuk rotasi
+VISUAL_UI_CATEGORIES = [
+    "Glassmorphism Login Form",
+    "Neon Glow Button Hover",
+    "Particle Cursor Animation",
+    "Parallax Hero Section",
+    "Animated Gradient Background",
+    "Card Flip 3D Effect",
+    "Typewriter Text Animation",
+    "Dark Mode Toggle",
+    "Floating Navigation Menu",
+    "Loading Spinner Animation",
+    "Neumorphism Calculator",
+    "Water Ripple Hover Effect",
+    "Portfolio Grid Layout",
+    "Scroll-Triggered Animation",
+    "Creative 404 Page",
+]
+
+# Self-improving prompt (Phase 11.4)
+ENABLE_SELF_IMPROVING_PROMPT = os.environ.get("ENABLE_SELF_IMPROVING_PROMPT", "0")
+PERFORMANCE_EXAMPLE_COUNT = int(os.environ.get("PERFORMANCE_EXAMPLE_COUNT", "3"))
+
+# Resolution upgrade (Phase 11.5)
+VIDEO_RESOLUTION = os.environ.get("VIDEO_RESOLUTION", "1080p")
+_RESOLUTION_SCALE = 2.0 if VIDEO_RESOLUTION == "4k" else 1.0

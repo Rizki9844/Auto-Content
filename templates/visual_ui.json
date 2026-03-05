@@ -1,0 +1,162 @@
+[
+    {
+        "topic": "Glassmorphism Login Form",
+        "hook": "This frosted glass login form is STUNNING!",
+        "language": "html",
+        "content_type": "login_page",
+        "category": "glassmorphism",
+        "code_skeleton": "backdrop-filter: blur(16px); background: rgba(255,255,255,0.1);"
+    },
+    {
+        "topic": "Neon Glow Button Hover Effect",
+        "hook": "Watch this button GLOW when you hover!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "neon_glow",
+        "code_skeleton": "box-shadow: 0 0 20px #a855f7, 0 0 40px #a855f7;"
+    },
+    {
+        "topic": "Canvas Particle Cursor Trail",
+        "hook": "Your cursor leaves magical particles behind!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "particles",
+        "code_skeleton": "canvas + requestAnimationFrame + mouse tracking"
+    },
+    {
+        "topic": "Animated Gradient Hero Section",
+        "hook": "This gradient background MOVES and it's pure CSS!",
+        "language": "html",
+        "content_type": "landing_page",
+        "category": "gradient",
+        "code_skeleton": "background: linear-gradient(-45deg, ...); animation: gradient 15s ease infinite;"
+    },
+    {
+        "topic": "3D Card Flip on Hover",
+        "hook": "Flip this card to reveal the back side!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "3d_transform",
+        "code_skeleton": "transform: rotateY(180deg); transform-style: preserve-3d;"
+    },
+    {
+        "topic": "Typewriter Text Animation",
+        "hook": "This typewriter effect is pure CSS — no JavaScript!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "text_animation",
+        "code_skeleton": "animation: typing 3.5s steps(40) + blink caret"
+    },
+    {
+        "topic": "Dark Mode Toggle with Smooth Transition",
+        "hook": "The smoothest dark mode toggle you'll ever see!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "dark_mode",
+        "code_skeleton": "CSS custom properties + transition: all 0.3s ease"
+    },
+    {
+        "topic": "Floating Navigation Menu",
+        "hook": "This nav floats and glows — minimal JavaScript!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "navigation",
+        "code_skeleton": "position: fixed; backdrop-filter: blur(); border-radius: 999px;"
+    },
+    {
+        "topic": "Neumorphism Calculator UI",
+        "hook": "Soft shadows make this calculator look SO premium!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "neumorphism",
+        "code_skeleton": "box-shadow: 8px 8px 16px #d1d1d1, -8px -8px 16px #ffffff;"
+    },
+    {
+        "topic": "Water Ripple Hover Effect",
+        "hook": "Touch it and watch the water ripple spread!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "hover_effect",
+        "code_skeleton": "CSS radial-gradient + scale animation on click"
+    },
+    {
+        "topic": "CSS-Only Loading Spinner",
+        "hook": "5 lines of CSS, infinite creativity!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "loading",
+        "code_skeleton": "@keyframes spin { to { transform: rotate(360deg); } }"
+    },
+    {
+        "topic": "Glitch Text Effect",
+        "hook": "This glitch effect looks like something from a movie!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "text_animation",
+        "code_skeleton": "clip-path + @keyframes glitch + ::before/::after pseudo-elements"
+    },
+    {
+        "topic": "Aurora Background Animation",
+        "hook": "Northern lights on your screen — pure CSS magic!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "aurora",
+        "code_skeleton": "filter: blur(80px); animation: aurora 6s ease-in-out infinite;"
+    },
+    {
+        "topic": "Creative Portfolio Card with Image Reveal",
+        "hook": "Hover to reveal the hidden image — smooth transition!",
+        "language": "html",
+        "content_type": "portfolio",
+        "category": "card_reveal",
+        "code_skeleton": "clip-path transition + hover reveal"
+    },
+    {
+        "topic": "Cyberpunk Pricing Card",
+        "hook": "This pricing card screams CYBERPUNK!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "cyberpunk",
+        "code_skeleton": "border: 1px solid #ec4899; text-shadow: 0 0 10px #ec4899;"
+    },
+    {
+        "topic": "Parallax Scroll Landing Page",
+        "hook": "Scroll down and watch the magic happen!",
+        "language": "html",
+        "content_type": "landing_page",
+        "category": "parallax",
+        "code_skeleton": "transform: translateY(calc(var(--scroll) * -0.5));"
+    },
+    {
+        "topic": "Animated SVG Line Drawing",
+        "hook": "Watch this logo draw itself line by line!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "svg_animation",
+        "code_skeleton": "stroke-dasharray + stroke-dashoffset + @keyframes draw"
+    },
+    {
+        "topic": "Morphing Blob Background",
+        "hook": "These blobs morph and flow like liquid!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "blob",
+        "code_skeleton": "border-radius: 30% 70% 70% 30% + @keyframes morph"
+    },
+    {
+        "topic": "Creative 404 Error Page",
+        "hook": "Even error pages can be beautiful!",
+        "language": "html",
+        "content_type": "creative_ui",
+        "category": "error_page",
+        "code_skeleton": "animated 404 text + particle background + CTA button"
+    },
+    {
+        "topic": "Gradient Text with Animated Shimmer",
+        "hook": "This text SHIMMERS with a gradient — mesmerizing!",
+        "language": "html",
+        "content_type": "animation",
+        "category": "text_animation",
+        "code_skeleton": "background: linear-gradient(); -webkit-background-clip: text; animation: shimmer;"
+    }
+]

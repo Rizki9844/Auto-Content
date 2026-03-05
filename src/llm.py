@@ -5,6 +5,7 @@ Generates structured JSON with title, narration script, code snippet, and hashta
 Phase 6.5: Prompt A/B Testing — two system prompt variants + auto rotation.
 Phase 6.6: Content Templates Library — 30% chance to use template as starting point.
 Phase 6.7: Voice & Tone Variety — narrator tone injected into prompt.
+Phase 11:  Content Pivot — visual UI/animation showcase mode.
 """
 import json
 import re
@@ -19,7 +20,7 @@ from google.genai import types
 from src import config
 from src.db import get_past_topics
 
-# JSON schema for structured Gemini output
+# JSON schema for structured Gemini output (coding_tips mode)
 _RESPONSE_SCHEMA = types.Schema(
     type=types.Type.OBJECT,
     required=["title", "script", "code", "language", "hashtags", "content_type"],
@@ -36,6 +37,26 @@ _RESPONSE_SCHEMA = types.Schema(
         "expected_output": types.Schema(type=types.Type.STRING),
         "quiz_answer": types.Schema(type=types.Type.STRING),
         "code_before": types.Schema(type=types.Type.STRING),
+    },
+)
+
+# JSON schema for visual UI mode (Phase 11)
+_VISUAL_UI_RESPONSE_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    required=["title", "script", "html_code", "display_code", "language",
+              "hashtags", "content_type", "ui_category"],
+    properties={
+        "title": types.Schema(type=types.Type.STRING),
+        "script": types.Schema(type=types.Type.STRING),
+        "html_code": types.Schema(type=types.Type.STRING),
+        "display_code": types.Schema(type=types.Type.STRING),
+        "language": types.Schema(type=types.Type.STRING),
+        "hashtags": types.Schema(
+            type=types.Type.ARRAY,
+            items=types.Schema(type=types.Type.STRING),
+        ),
+        "content_type": types.Schema(type=types.Type.STRING),
+        "ui_category": types.Schema(type=types.Type.STRING),
     },
 )
 
@@ -143,6 +164,68 @@ Return valid JSON:
   "expected_output": "(optional)",
   "quiz_answer": "(REQUIRED for quiz)",
   "code_before": "(REQUIRED for before_after)"
+}"""
+
+
+# ══════════════════════════════════════════════════════════════
+#  SYSTEM PROMPT — VISUAL UI MODE  (Phase 11)
+# ══════════════════════════════════════════════════════════════
+SYSTEM_PROMPT_VISUAL_UI = """You are an EXPERT front-end developer and creative coder who creates STUNNING visual UI demos for YouTube Shorts. Your audience loves beautiful web designs, creative animations, and impressive CSS/JS effects.
+
+Your mission: generate a COMPLETE, self-contained HTML page that produces a visually STUNNING effect that makes viewers stop scrolling.
+
+PROJECT CATEGORIES — pick ONE per generation:
+1. "landing_page" — A creative hero section with gradient backgrounds, floating elements, animated text, parallax effects.
+2. "login_page" — A beautiful auth form with glassmorphism, neon glow, aurora effects, or creative input animations.
+3. "portfolio" — A personal portfolio card/section with hover effects, image reveal, or creative layout.
+4. "animation" — A pure CSS/JS animation: particles, cursor effects, waves, morphing shapes, loading spinners.
+5. "interactive_component" — A standalone micro-interaction UI: Add to cart button, toggle switch, like button, input field, interactive cards.
+6. "creative_ui" — Any other creative web UI: 404 pages, dark mode toggles, navigation menus, pricing cards, etc.
+
+STRICT RULES:
+1. Generate a COMPLETE, self-contained HTML file with INLINE CSS and JS (no external deps).
+2. The visual MUST be eye-catching and impressive within the first 2 seconds.
+3. Must render beautifully in a 1000×560 viewport with dark background (#0d1117).
+4. Use MODERN CSS: gradients, backdrop-filter, @keyframes, transforms, transitions, custom properties.
+5. Use creative color palettes: neon purples (#a855f7), electric blues (#3b82f6), hot pinks (#ec4899), emerald (#10b981). AVOID plain colors.
+6. Add subtle animations: hover effects, entrance animations, floating elements, gradient shifts.
+7. CRITICAL FOR INTERACTIVE COMPONENTS: If the UI requires user interaction (like clicking a button or hovering a card), YOU MUST include JavaScript that automatically triggers this interaction in a loop (e.g., `setInterval(() => btn.click(), 1500)`) so the animation plays autonomously for screen recording.
+8. Keep JS minimal but impactful. Canvas animations, requestAnimationFrame, cursor tracking are great.
+9. The code MUST be syntactically correct and render without errors.
+10. The `display_code` field should contain ONLY the 5-15 most interesting/key lines that show the creative technique. This is what appears in the video — make it showcase the coolest part.
+11. The narration script (40-70 words) should describe what the viewer is seeing and why it's cool. Use excitement!
+12. Title must be catchy, max 80 chars, end with " #Shorts".
+13. Generate 5-8 hashtags including #WebDev, #CSS, #Frontend.
+
+CATEGORIES TO ROTATE BETWEEN:
+- Micro-interactions (Add to Cart, Like Button, Loading state)
+- Toggle Switches (Light/Dark mode, On/Off with spring physics)
+- Glassmorphism effects (backdrop-filter, frosted glass)
+- Neon glow / cyberpunk UI
+- Particle systems (canvas-based)
+- CSS-only animations (@keyframes magic)
+- Gradient mesh backgrounds
+- 3D transforms and perspectives
+- Hover-triggered animations (with JS auto-hover simulation)
+- Creative text effects (gradient text, typewriter, glitch)
+- Cursor-following effects
+- Smooth scroll animations
+- Neumorphism / Soft UI
+- Aurora / Northern lights effects
+- Liquid / Blob animations
+- Card hover reveal effects
+- Creative form designs
+
+Return valid JSON with this exact schema:
+{
+  "content_type": "landing_page|login_page|portfolio|animation|interactive_component|creative_ui",
+  "ui_category": "short description of the specific effect, e.g. 'Glassmorphism Login with Aurora Background'",
+  "title": "catchy title ending with #Shorts",
+  "script": "40-70 word narration describing what viewer sees",
+  "html_code": "the COMPLETE self-contained HTML file",
+  "display_code": "5-15 lines of the MOST interesting code to show in video",
+  "language": "html",
+  "hashtags": ["#WebDev", "#CSS", "#Frontend", ...]
 }"""
 
 
@@ -428,25 +511,30 @@ def generate_content(
     series_context: dict | None = None,
 ) -> dict:
     """
-    Generate a unique coding tip using Gemini Pro.
+    Generate content using Gemini Pro.
+
+    Supports two modes via config.CONTENT_MODE:
+    - "coding_tips": coding tip/quiz/before_after (original)
+    - "visual_ui":   visual UI/animation showcase (Phase 11)
+
     Returns a dict with keys: title, script, code, language, hashtags,
     plus metadata: prompt_variant, narrator_tone, template_used.
     Raises RuntimeError after MAX_RETRIES failed attempts.
-
-    Args:
-        avoid_languages:  List of language names to avoid (Phase 3.3 dedup).
-        series_context:   Optional series metadata (Phase 6.4). When provided,
-                          the prompt is anchored to the series theme/episode.
-                          Keys: episode, total, theme, topic, content_type, language
     """
     if not config.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is not configured")
 
     client = genai.Client(api_key=config.GEMINI_API_KEY)
 
+    # ── Phase 11: Branch berdasarkan CONTENT_MODE ─────────────
+    is_visual_ui = config.CONTENT_MODE == "visual_ui"
+
     # ── Resolve prompt variant (Phase 6.5) ────────────────────
     variant = resolve_prompt_variant()
-    active_prompt = get_system_prompt(variant)
+    if is_visual_ui:
+        active_prompt = SYSTEM_PROMPT_VISUAL_UI
+    else:
+        active_prompt = get_system_prompt(variant)
     logger.info(f"Prompt variant: {variant}")
 
     # ── Resolve narrator tone (Phase 6.7) ─────────────────────
@@ -576,12 +664,43 @@ def generate_content(
         template_used = selected_template.get("topic", "unknown")
         logger.info(f"Template selected: {template_used}")
 
+    # Phase 11.4 — Self-Improving Prompt (Performance Feedback)
+    performance_hint = ""
+    if config.ENABLE_YT_ANALYTICS == "1":
+        try:
+            from src.db import get_top_performing_topics
+            top_performers = get_top_performing_topics(limit=2, content_mode=config.CONTENT_MODE)
+            if top_performers:
+                examples_text = ""
+                for i, p in enumerate(top_performers, 1):
+                    examples_text += f"\nExample {i} (Highly successful):\n"
+                    examples_text += f"Title: {p.get('title')}\n"
+                    examples_text += f"Script: {p.get('script')}\n"
+                    
+                performance_hint = (
+                    f"\n\n══ TOP PERFORMING EXAMPLES ══\n"
+                    f"Study these top-performing past videos to understand what works:\n"
+                    f"{examples_text}\n"
+                    f"Use these as inspiration for QUALITY pacing and structure, but create an entirely NEW topic."
+                )
+        except Exception as e:
+            logger.warning(f"Performance examples skipped: {e}")
+
+    prompt_ending = (
+        "Now generate a brand new, stunning visual UI component." if is_visual_ui 
+        else "Now generate a brand new, unique coding tip."
+    )
+
     user_prompt = f"""{active_prompt}
 
 ══ PREVIOUSLY GENERATED TOPICS (DO NOT REPEAT ANY) ══
-{history_text}{lang_hint}{trending_hint}{analytics_hint}{series_hint}{narration_lang_hint}{tone_hint}{template_hint}
+{history_text}{lang_hint}{trending_hint}{analytics_hint}{series_hint}{narration_lang_hint}{tone_hint}{template_hint}{performance_hint}
 
-Now generate a brand new, unique coding tip. Pick a DIFFERENT language and category from the ones listed above. Return valid JSON only."""
+{prompt_ending} Pick a DIFFERENT language and category from the ones listed above. Return valid JSON only."""
+
+    # ── Pilih schema berdasarkan mode ──────────────────────────
+    active_schema = _VISUAL_UI_RESPONSE_SCHEMA if is_visual_ui else _RESPONSE_SCHEMA
+    max_tokens = 4096 if is_visual_ui else 2048  # Visual UI butuh lebih banyak token
 
     # ── Retry loop ────────────────────────────────────────────
     last_error = None
@@ -593,10 +712,10 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
                 contents=user_prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=_RESPONSE_SCHEMA,
+                    response_schema=active_schema,
                     temperature=0.9,
                     top_p=0.95,
-                    max_output_tokens=2048,
+                    max_output_tokens=max_tokens,
                 ),
             )
 
@@ -606,13 +725,22 @@ Now generate a brand new, unique coding tip. Pick a DIFFERENT language and categ
             data = _repair_json(raw_text)
 
             # Validate required fields
-            _validate_content(data)
+            if is_visual_ui:
+                _validate_visual_ui_content(data)
+            else:
+                _validate_content(data)
 
             # Attach generation metadata (Phase 6.5 / 6.6 / 6.7)
             data["prompt_variant"] = variant
             data["narrator_tone"] = tone
+            data["content_mode"] = config.CONTENT_MODE
             if template_used:
                 data["template_used"] = template_used
+
+            # Phase 11: Map visual UI fields ke field standar untuk backward compat
+            if is_visual_ui:
+                data["code"] = data.get("display_code", "")
+                data["language"] = data.get("language", "html")
 
             logger.info(f"Content generated: [{data['language']}] {data['title']}")
             return data
@@ -723,3 +851,42 @@ def _validate_content(data: dict) -> None:
         data["quiz_answer"] = ""
     if ct == "before_after" and not data.get("code_before"):
         data["code_before"] = ""
+
+
+def _validate_visual_ui_content(data: dict) -> None:
+    """Validate visual UI content from LLM (Phase 11)."""
+    required = ["title", "script", "html_code", "display_code", "hashtags"]
+    missing = [k for k in required if k not in data]
+    if missing:
+        raise ValueError(f"Missing fields in visual UI response: {missing}")
+
+    if not data["html_code"].strip():
+        raise ValueError("html_code is empty")
+
+    if not data["display_code"].strip():
+        raise ValueError("display_code is empty")
+
+    word_count = len(data["script"].split())
+    if word_count < 20:
+        raise ValueError(f"Script too short: {word_count} words (minimum 20)")
+
+    if not isinstance(data["hashtags"], list) or len(data["hashtags"]) < 3:
+        raise ValueError("Need at least 3 hashtags")
+
+    # Ensure title ends with #Shorts
+    if "#Shorts" not in data["title"] and "#shorts" not in data["title"]:
+        data["title"] = data["title"].rstrip() + " #Shorts"
+
+    # Normalize content_type
+    ct = data.get("content_type", "creative_ui").lower().strip()
+    valid_types = {"landing_page", "login_page", "portfolio", "animation", "creative_ui"}
+    if ct not in valid_types:
+        ct = "creative_ui"
+    data["content_type"] = ct
+
+    # Normalize language
+    data["language"] = data.get("language", "html").lower().strip()
+
+    # Default ui_category
+    if not data.get("ui_category"):
+        data["ui_category"] = ct.replace("_", " ").title()
