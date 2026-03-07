@@ -3,9 +3,8 @@ Tests for Phase 11.5: Resolution Upgrade (Optional 4K).
 Ensures that the pipeline correctly scales the layout constants
 when VIDEO_RESOLUTION is set to 4k.
 """
-import os
 import importlib
-from unittest.mock import patch
+
 
 def test_config_resolution_scaling(monkeypatch):
     """Test that all layout constants scale up by 2x when in 4K mode."""

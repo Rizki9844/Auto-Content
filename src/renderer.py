@@ -1085,7 +1085,8 @@ class FrameRenderer:
     def _fit_preview_images(
         self, imgs: "Image.Image | list[Image.Image] | None"
     ) -> "Image.Image | list[Image.Image] | None":
-        if imgs is None: return None
+        if imgs is None:
+            return None
         if isinstance(imgs, list):
             return [img for img in (self._fit_single_preview_image(img) for img in imgs) if img is not None]
         return self._fit_single_preview_image(imgs)
@@ -1111,9 +1112,12 @@ class FrameRenderer:
             return img.resize((max(new_w, 1), max(new_h, 1)))
 
     def _get_animated_preview_frame(self, t: float) -> "Image.Image | None":
-        if self.preview_image is None: return None
-        if not isinstance(self.preview_image, list): return self.preview_image
-        if not self.preview_image: return None
+        if self.preview_image is None:
+            return None
+        if not isinstance(self.preview_image, list):
+            return self.preview_image
+        if not self.preview_image:
+            return None
         
         # Loop animation at 15 FPS
         fps = 15.0
@@ -1123,7 +1127,8 @@ class FrameRenderer:
     def _draw_captured_preview(self, draw: ImageDraw.ImageDraw, t: float):
         """Paste the pre-captured animated/static preview image into the panel."""
         img_frame = self._get_animated_preview_frame(t)
-        if img_frame is None: return
+        if img_frame is None:
+            return
         
         panel_x = config.PADDING + 2
         panel_top = config.PREVIEW_Y + config.PREVIEW_CHROME_H + 1

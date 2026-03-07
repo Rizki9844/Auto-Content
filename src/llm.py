@@ -854,32 +854,65 @@ def _validate_content(data: dict) -> None:
 
 
 def _validate_visual_ui_content(data: dict) -> None:
-    """Validate visual UI content from LLM (Phase 11)."""
-    required = ["title", "script", "html_code", "display_code", "hashtags"]
-    missing = [k for k in required if k not in data]
+    """Validate visual UI content from LLM (Phase 11).
+    
+    Provides sensible defaults for optional fields that Gemini
+    sometimes omits, instead of raising hard errors.
+    """
+    # Hard-required: at minimum we need title, script, and html_code
+    hard_required = ["title", "script", "html_code"]
+    missing = [k for k in hard_required if k not in data or not data[k]]
     if missing:
         raise ValueError(f"Missing fields in visual UI response: {missing}")
 
     if not data["html_code"].strip():
         raise ValueError("html_code is empty")
 
-    if not data["display_code"].strip():
-        raise ValueError("display_code is empty")
+    # Soft-required: provide defaults if Gemini didn't include them
+    if "display_code" not in data or not data.get("display_code", "").strip():
+        # Extract a representative snippet from html_code as fallback
+        html = data["html_code"]
+        # Try to find <style> or <script> content for display_code
+        import re
+        style_match = re.search(r'<style[^>]*>(.*?)</style>', html, re.DOTALL)
+        script_match = re.search(r'<script[^>]*>(.*?)</script>', html, re.DOTALL)
+        if style_match:
+            snippet = style_match.group(1).strip()
+        elif script_match:
+            snippet = script_match.group(1).strip()
+        else:
+            # Take the first 10 lines of the html
+            snippet = '\n'.join(html.strip().splitlines()[:10])
+        data["display_code"] = snippet
+        logger.info("display_code was missing — auto-extracted from html_code")
+
+    if "hashtags" not in data or not isinstance(data.get("hashtags"), list) or len(data.get("hashtags", [])) < 1:
+        data["hashtags"] = ["#WebDev", "#CSS", "#Frontend", "#JavaScript", "#Coding"]
+        logger.info("hashtags were missing — using default set")
 
     word_count = len(data["script"].split())
     if word_count < 20:
         raise ValueError(f"Script too short: {word_count} words (minimum 20)")
 
-    if not isinstance(data["hashtags"], list) or len(data["hashtags"]) < 3:
-        raise ValueError("Need at least 3 hashtags")
+    if len(data["hashtags"]) < 3:
+        # Pad hashtags to minimum 3
+        defaults = ["#WebDev", "#CSS", "#Frontend", "#JavaScript", "#Coding"]
+        while len(data["hashtags"]) < 3:
+            for d in defaults:
+                if d not in data["hashtags"]:
+                    data["hashtags"].append(d)
+                    break
 
     # Ensure title ends with #Shorts
     if "#Shorts" not in data["title"] and "#shorts" not in data["title"]:
         data["title"] = data["title"].rstrip() + " #Shorts"
 
-    # Normalize content_type
+    # Normalize content_type — include interactive_component (Phase 11.6)
     ct = data.get("content_type", "creative_ui").lower().strip()
-    valid_types = {"landing_page", "login_page", "portfolio", "animation", "creative_ui"}
+    valid_types = {
+        "landing_page", "login_page", "portfolio",
+        "animation", "interactive_component", "creative_ui",
+    }
     if ct not in valid_types:
         ct = "creative_ui"
     data["content_type"] = ct
