@@ -200,7 +200,7 @@ STRICT RULES:
 7. CRITICAL FOR INTERACTIVE COMPONENTS: Include JavaScript that auto-triggers interactions in a loop (e.g., `setInterval(() => btn.click(), 1500)`) for screen recording.
 8. Keep JS minimal but impactful. Canvas animations, requestAnimationFrame, cursor tracking are great.
 9. The code MUST be syntactically correct and render without console errors.
-10. The `display_code` field should contain ONLY the 8-15 most creative/interesting CSS or JS lines — the part that makes viewers think "I need this code!"
+10. The `display_code` field should contain ONLY the 8-10 most creative/interesting CSS or JS lines — this is a TEASER. Viewers comment for full code. Keep it SHORT and CLEAN — it must fit on screen without scrolling.
 11. The narration script (40-70 words) should describe what the viewer is seeing with excitement.
 12. Title must be catchy, max 80 chars, end with " #Shorts".
 13. Generate 5-8 hashtags including #WebDev, #CSS, #Frontend.

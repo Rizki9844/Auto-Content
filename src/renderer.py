@@ -1030,7 +1030,7 @@ class FrameRenderer:
         """Draw a large, eye-catching title at the top of the frame.
 
         The last word renders in green accent (#7ee787) while the rest
-        is white — matching the style of channels like animmaster_studio.
+        is white. Auto-scales font size to fit within screen width.
         Includes a subtle fade-in during the first 0.5 seconds.
         """
         if not self.title:
@@ -1050,12 +1050,20 @@ class FrameRenderer:
 
         center_x = self.width // 2
         center_y = config.TITLE_HEADER_Y + config.TITLE_HEADER_H // 2
+        max_w = self.width - 2 * config.PADDING  # max allowed title width
 
         if len(words) == 1:
-            # Single word — render entirely in accent
+            # Single word — render entirely in accent, auto-scale
+            font = self.title_header_accent_font
+            bbox = font.getbbox(words[0])
+            text_w = bbox[2] - bbox[0]
+            if text_w > max_w:
+                scale = max_w / text_w
+                new_size = max(int(config.TITLE_HEADER_ACCENT_SIZE * scale), 30)
+                font = ImageFont.truetype(font.path, new_size)
             draw.text(
                 (center_x, center_y), words[0],
-                fill="#7ee787", font=self.title_header_accent_font, anchor="mm",
+                fill="#7ee787", font=font, anchor="mm",
             )
             return
 
@@ -1063,39 +1071,76 @@ class FrameRenderer:
         prefix = " ".join(words[:-1])
         accent_word = words[-1]
 
-        # Measure widths to center the entire title
-        prefix_bbox = self.title_header_font.getbbox(prefix + " ")
+        # Auto-scale: shrink font if title exceeds screen width
+        main_font = self.title_header_font
+        accent_font = self.title_header_accent_font
+        main_size = config.TITLE_HEADER_FONT_SIZE
+        accent_size = config.TITLE_HEADER_ACCENT_SIZE
+
+        for _ in range(20):  # max 20 shrink attempts
+            prefix_bbox = main_font.getbbox(prefix + " ")
+            prefix_w = prefix_bbox[2] - prefix_bbox[0]
+            accent_bbox = accent_font.getbbox(accent_word)
+            accent_w = accent_bbox[2] - accent_bbox[0]
+            total_w = prefix_w + accent_w
+
+            if total_w <= max_w or main_size <= 30:
+                break
+            # Shrink by ~10% each step
+            main_size = max(int(main_size * 0.88), 30)
+            accent_size = max(int(accent_size * 0.88), 32)
+            main_font = ImageFont.truetype(main_font.path, main_size)
+            accent_font = ImageFont.truetype(accent_font.path, accent_size)
+
+        # Re-measure after scaling
+        prefix_bbox = main_font.getbbox(prefix + " ")
         prefix_w = prefix_bbox[2] - prefix_bbox[0]
-        accent_bbox = self.title_header_accent_font.getbbox(accent_word)
+        accent_bbox = accent_font.getbbox(accent_word)
         accent_w = accent_bbox[2] - accent_bbox[0]
         total_w = prefix_w + accent_w
+
+        # Truncate title if still too wide (ultimate fallback)
+        while total_w > max_w and len(prefix) > 8:
+            words_left = prefix.split()
+            if len(words_left) <= 1:
+                break
+            words_left = words_left[:-1]
+            prefix = " ".join(words_left)
+            prefix_bbox = main_font.getbbox(prefix + "… ")
+            prefix_w = prefix_bbox[2] - prefix_bbox[0]
+            total_w = prefix_w + accent_w
+            prefix = prefix + "…"
 
         start_x = center_x - total_w // 2
 
         # Draw prefix (white)
         draw.text(
             (start_x, center_y), prefix + " ",
-            fill="#ffffff", font=self.title_header_font, anchor="lm",
+            fill="#ffffff", font=main_font, anchor="lm",
         )
         # Draw accent word (green)
         draw.text(
             (start_x + prefix_w, center_y), accent_word,
-            fill="#7ee787", font=self.title_header_accent_font, anchor="lm",
+            fill="#7ee787", font=accent_font, anchor="lm",
         )
 
         # Subtle gradient underline below title
-        line_y = center_y + config.TITLE_HEADER_FONT_SIZE // 2 + 8
-        bar_left = start_x
-        bar_right = start_x + total_w
+        line_y = center_y + main_size // 2 + 8
+        bar_left = max(start_x, 0)
+        bar_right = min(start_x + total_w, self.width)
         left_rgb = _hex_to_rgb("#7ee787")
         right_rgb = _hex_to_rgb("#58a6ff")
-        for x in range(bar_left, min(bar_right, self.width)):
+        for x in range(bar_left, bar_right):
             t_bar = (x - bar_left) / max(bar_right - bar_left, 1)
             c = _lerp_color(left_rgb, right_rgb, t_bar)
             draw.line([(x, line_y), (x, line_y + 3)], fill=c)
 
     def _render_code_phase(self, t: float) -> np.ndarray:
-        """Render split-screen: title header + preview (top) + code editor (bottom)."""
+        """Render split-screen: title header + preview (top) + code editor (bottom).
+
+        Code is displayed STATICALLY (no typing animation) — the focus is on
+        the live Playwright preview panel above, not the code.
+        """
         frame = self.base.copy()
         draw = ImageDraw.Draw(frame)
 
@@ -1108,39 +1153,16 @@ class FrameRenderer:
         # ── Top panel: dynamic preview content ──────────────
         self._draw_preview_content(draw, t)
 
-        # ── Bottom panel: code typing animation ───────────
-        n_chars = self._get_visible_chars(t)
+        # ── Bottom panel: STATIC code display (all chars visible) ──
+        n_chars = self.total_chars  # Show everything from the start
 
-        # Per-line slide-in offset (Phase 5.5)
-        slide_line_y, slide_x = self._get_line_slide_offset(n_chars)
-
-        # Current line highlight
-        if 0 < n_chars <= self.total_chars:
-            idx = min(n_chars - 1, self.total_chars - 1)
-            _, _, cur_y, _ = self.char_data[idx]
-            draw.rectangle(
-                [config.PADDING + 1, cur_y - 2,
-                 self.width - config.PADDING - 1, cur_y + self.line_height - 4],
-                fill=config.LINE_HIGHLIGHT,
-            )
-
-        # Phase 9.2: Animated code highlighting (glow on narration-matched line)
-        if config.ENABLE_LINE_HIGHLIGHT == "1":
-            hl_line = self._get_highlighted_line(t)
-            if hl_line is not None:
-                self._draw_line_highlight_glow(draw, hl_line, n_chars)
-
-        # Draw visible code characters with slide animation on active line
+        # Draw all code characters statically (no animation)
         for i in range(n_chars):
             ch, x, y, color = self.char_data[i]
             if ch.strip():
-                render_x = x + (slide_x if y == slide_line_y else 0)
-                draw.text((render_x, y), ch, fill=color, font=self.code_font)
+                draw.text((x, y), ch, fill=color, font=self.code_font)
 
-        # Blinking cursor
-        self._draw_cursor(draw, t, n_chars)
-
-        # Phase 10.1: CTA overlay — "Comment 'X' for code" (last seconds)
+        # Phase 10.1: CTA overlay — "Comment 'X' for code" (persistent)
         self._draw_cta_overlay(draw, t)
 
         # Karaoke subtitles
