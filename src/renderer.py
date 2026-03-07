@@ -268,7 +268,7 @@ class FrameRenderer:
         self.code_font_bold = ImageFont.truetype(config.FONT_BOLD, self.code_font_size)
         self.line_num_font = ImageFont.truetype(config.FONT_REGULAR, self.line_num_font_size)
         self.subtitle_font = ImageFont.truetype(config.FONT_BOLD, config.SUBTITLE_FONT_SIZE)
-        self.subtitle_font_small = ImageFont.truetype(config.FONT_BOLD, 40)  # adaptive for long groups
+        self.subtitle_font_small = ImageFont.truetype(config.FONT_BOLD, 40)
         self.watermark_font = ImageFont.truetype(config.FONT_REGULAR, config.WATERMARK_FONT_SIZE)
         self.chrome_font = ImageFont.truetype(config.FONT_REGULAR, config.CHROME_FONT_SIZE)
         self.title_font = ImageFont.truetype(config.FONT_BOLD, config.TITLE_FONT_SIZE)
@@ -276,6 +276,11 @@ class FrameRenderer:
         self.output_font = ImageFont.truetype(config.FONT_REGULAR, config.OUTPUT_FONT_SIZE)
         self.outro_font = ImageFont.truetype(config.FONT_BOLD, config.OUTRO_FONT_SIZE)
         self.outro_sub_font = ImageFont.truetype(config.FONT_REGULAR, config.OUTRO_SUB_FONT_SIZE)
+
+        # Phase 12: Title header fonts (big gradient title)
+        self.title_header_font = ImageFont.truetype(config.FONT_BOLD, config.TITLE_HEADER_FONT_SIZE)
+        self.title_header_accent_font = ImageFont.truetype(config.FONT_BOLD, config.TITLE_HEADER_ACCENT_SIZE)
+        self.cta_chrome_font = ImageFont.truetype(config.FONT_BOLD, config.CHROME_FONT_SIZE + 2)
 
         # Preview panel fonts (slightly smaller for top half)
         self.preview_code_font = ImageFont.truetype(config.FONT_REGULAR, config.PREVIEW_CODE_FONT_SIZE)
@@ -489,14 +494,24 @@ class FrameRenderer:
             cx = dot_start_x + i * 22
             draw.ellipse([cx - 5, dot_cy2 - 5, cx + 5, dot_cy2 + 5], fill=color)
 
-        # Filename
+        # Filename + CTA label in chrome bar (Phase 12C)
         ext = EXT_MAP.get(self.language, ".txt")
         filename = f"main{ext}"
         if self.content_type == "before_after":
             filename = f"✅ main{ext}  (AFTER)"
         draw.text(
-            (self.width // 2, dot_cy2), filename,
-            fill="#8b949e", font=self.chrome_font, anchor="mm",
+            (dot_start_x + 80, dot_cy2), filename,
+            fill="#8b949e", font=self.chrome_font, anchor="lm",
+        )
+        # Phase 12C: Persistent CTA text in chrome bar — "Comm 'X' for code"
+        cta_keyword = self.title.split()[0] if self.title else "code"
+        # Pick a short, memorable keyword from title
+        if len(cta_keyword) > 8:
+            cta_keyword = "code"
+        cta_text = f'Comm "{cta_keyword}" for code'
+        draw.text(
+            (self.width - config.PADDING - 16, dot_cy2), cta_text,
+            fill="#7ee787", font=self.cta_chrome_font, anchor="rm",
         )
 
         # Separator
@@ -1007,15 +1022,90 @@ class FrameRenderer:
 
         return np.array(frame)
 
+    # ──────────────────────────────────────────────────────────
+    #  PHASE 12B: TITLE HEADER — Big gradient title at top
+    # ──────────────────────────────────────────────────────────
+
+    def _draw_title_header(self, draw: ImageDraw.ImageDraw, t: float):
+        """Draw a large, eye-catching title at the top of the frame.
+
+        The last word renders in green accent (#7ee787) while the rest
+        is white — matching the style of channels like animmaster_studio.
+        Includes a subtle fade-in during the first 0.5 seconds.
+        """
+        if not self.title:
+            return
+
+        # Clean title: remove #Shorts and hashtags for display
+        display_title = self.title.replace("#Shorts", "").replace("#shorts", "").strip()
+        # Remove any remaining hashtags
+        words = [w for w in display_title.split() if not w.startswith("#")]
+        if not words:
+            return
+
+        # Fade-in animation (first 0.5s)
+        alpha = min(t / 0.5, 1.0)
+        if alpha < 0.01:
+            return
+
+        center_x = self.width // 2
+        center_y = config.TITLE_HEADER_Y + config.TITLE_HEADER_H // 2
+
+        if len(words) == 1:
+            # Single word — render entirely in accent
+            draw.text(
+                (center_x, center_y), words[0],
+                fill="#7ee787", font=self.title_header_accent_font, anchor="mm",
+            )
+            return
+
+        # Multi-word: last word in accent green, rest in white
+        prefix = " ".join(words[:-1])
+        accent_word = words[-1]
+
+        # Measure widths to center the entire title
+        prefix_bbox = self.title_header_font.getbbox(prefix + " ")
+        prefix_w = prefix_bbox[2] - prefix_bbox[0]
+        accent_bbox = self.title_header_accent_font.getbbox(accent_word)
+        accent_w = accent_bbox[2] - accent_bbox[0]
+        total_w = prefix_w + accent_w
+
+        start_x = center_x - total_w // 2
+
+        # Draw prefix (white)
+        draw.text(
+            (start_x, center_y), prefix + " ",
+            fill="#ffffff", font=self.title_header_font, anchor="lm",
+        )
+        # Draw accent word (green)
+        draw.text(
+            (start_x + prefix_w, center_y), accent_word,
+            fill="#7ee787", font=self.title_header_accent_font, anchor="lm",
+        )
+
+        # Subtle gradient underline below title
+        line_y = center_y + config.TITLE_HEADER_FONT_SIZE // 2 + 8
+        bar_left = start_x
+        bar_right = start_x + total_w
+        left_rgb = _hex_to_rgb("#7ee787")
+        right_rgb = _hex_to_rgb("#58a6ff")
+        for x in range(bar_left, min(bar_right, self.width)):
+            t_bar = (x - bar_left) / max(bar_right - bar_left, 1)
+            c = _lerp_color(left_rgb, right_rgb, t_bar)
+            draw.line([(x, line_y), (x, line_y + 3)], fill=c)
+
     def _render_code_phase(self, t: float) -> np.ndarray:
-        """Render split-screen: preview (top) + code editor (bottom)."""
+        """Render split-screen: title header + preview (top) + code editor (bottom)."""
         frame = self.base.copy()
         draw = ImageDraw.Draw(frame)
 
         # ── Subtle background particles (Phase 5.9) ────────
         self._draw_bg_particles(draw, t)
 
-        # ── Top panel: dynamic preview content ────────────
+        # ── Phase 12B: Big gradient title header ────────────
+        self._draw_title_header(draw, t)
+
+        # ── Top panel: dynamic preview content ──────────────
         self._draw_preview_content(draw, t)
 
         # ── Bottom panel: code typing animation ───────────

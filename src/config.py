@@ -61,33 +61,38 @@ PREVIEW_RUNNING_COLOR = "#58a6ff"     # spinner + "Running..." text
 
 
 # ══════════════════════════════════════════════════════════════
-#  SPLIT-SCREEN LAYOUT (Canvas config)
+#  SPLIT-SCREEN LAYOUT (Canvas config — Phase 12 overhaul)
 # ══════════════════════════════════════════════════════════════
 PADDING = 40 * SCALE
 
-# ── Preview panel (top) — output / demo / concept ────────────
-PREVIEW_Y = 50 * SCALE
-PREVIEW_CHROME_H = 40 * SCALE
-PREVIEW_CONTENT_Y = PREVIEW_Y + PREVIEW_CHROME_H + (15 * SCALE)
-PREVIEW_CODE_TOP = PREVIEW_Y + PREVIEW_CHROME_H + (25 * SCALE)
-PREVIEW_BOTTOM = 680 * SCALE
+# ── Title header (top) — big gradient title like "Next LVL Portfolio" ──
+TITLE_HEADER_Y = 20 * SCALE
+TITLE_HEADER_H = 160 * SCALE
+TITLE_HEADER_BOTTOM = TITLE_HEADER_Y + TITLE_HEADER_H  # 180
+
+# ── Preview panel (below title) — website rendered by Chromium ──
+PREVIEW_Y = TITLE_HEADER_BOTTOM + (10 * SCALE)  # 190
+PREVIEW_CHROME_H = 36 * SCALE
+PREVIEW_CONTENT_Y = PREVIEW_Y + PREVIEW_CHROME_H + (10 * SCALE)
+PREVIEW_CODE_TOP = PREVIEW_Y + PREVIEW_CHROME_H + (20 * SCALE)
+PREVIEW_BOTTOM = 870 * SCALE  # Enlarged preview: ~680px (was ~630px)
 
 # ── Gradient divider ─────────────────────────────────────────
-DIVIDER_Y = 700 * SCALE
+DIVIDER_Y = 890 * SCALE
 
 # ── Code editor panel (bottom) — typing animation ────────────
-CHROME_Y = 730 * SCALE
-CHROME_H = 44 * SCALE
-CODE_TOP = CHROME_Y + CHROME_H + (25 * SCALE)
+CHROME_Y = 910 * SCALE
+CHROME_H = 40 * SCALE
+CODE_TOP = CHROME_Y + CHROME_H + (20 * SCALE)
 CODE_LEFT = PADDING + (72 * SCALE)
 LINE_NUM_RIGHT_X = PADDING + (52 * SCALE)
 GUTTER_X = PADDING + (62 * SCALE)
 
 # ── Subtitles & watermark ────────────────────────────────────
-SUBTITLE_Y = 1480 * SCALE
-WATERMARK_Y = 1840 * SCALE
+SUBTITLE_Y = 1520 * SCALE
+WATERMARK_Y = 1860 * SCALE
 
-# ── CTA Overlay (Phase 10.1) ─────────────────────────────────
+# ── CTA Overlay (Phase 10.1 / 12C — now persistent) ──────────
 CTA_Y = 1750 * SCALE
 CTA_HEIGHT = 80 * SCALE
 CTA_RADIUS = 40 * SCALE
@@ -96,19 +101,21 @@ CTA_RADIUS = 40 * SCALE
 # ══════════════════════════════════════════════════════════════
 #  FONT SIZES
 # ══════════════════════════════════════════════════════════════
-CODE_FONT_SIZE = 26 * SCALE
-LINE_NUM_FONT_SIZE = 20 * SCALE
-SUBTITLE_FONT_SIZE = 48 * SCALE
+CODE_FONT_SIZE = 24 * SCALE
+LINE_NUM_FONT_SIZE = 18 * SCALE
+SUBTITLE_FONT_SIZE = 44 * SCALE
 WATERMARK_FONT_SIZE = 16 * SCALE
-CHROME_FONT_SIZE = 15 * SCALE
-TITLE_FONT_SIZE = 48 * SCALE
-TITLE_SUB_FONT_SIZE = 28 * SCALE
-OUTPUT_FONT_SIZE = 22 * SCALE
+CHROME_FONT_SIZE = 14 * SCALE
+TITLE_FONT_SIZE = 56 * SCALE      # Phase 12: bigger title
+TITLE_SUB_FONT_SIZE = 26 * SCALE
+OUTPUT_FONT_SIZE = 20 * SCALE
 OUTRO_FONT_SIZE = 40 * SCALE
 OUTRO_SUB_FONT_SIZE = 28 * SCALE
-PREVIEW_CODE_FONT_SIZE = 22 * SCALE
-PREVIEW_LINE_NUM_SIZE = 18 * SCALE
-CTA_FONT_SIZE = 32 * SCALE
+PREVIEW_CODE_FONT_SIZE = 20 * SCALE
+PREVIEW_LINE_NUM_SIZE = 16 * SCALE
+CTA_FONT_SIZE = 30 * SCALE
+TITLE_HEADER_FONT_SIZE = 60 * SCALE   # Phase 12: big gradient title
+TITLE_HEADER_ACCENT_SIZE = 64 * SCALE # accent word slightly bigger
 
 
 # ══════════════════════════════════════════════════════════════
@@ -344,12 +351,12 @@ STABILITY_API_KEY = os.environ.get("STABILITY_API_KEY", "")
 ENABLE_VISUAL_PREVIEW = os.environ.get("ENABLE_VISUAL_PREVIEW", "1") == "1"
 
 # Playwright headless browser settings
-PLAYWRIGHT_TIMEOUT_MS = int(os.environ.get("PLAYWRIGHT_TIMEOUT_MS", "5000"))
-PLAYWRIGHT_VIEWPORT = (1000, 560)  # (width, height) for browser capture
+PLAYWRIGHT_TIMEOUT_MS = int(os.environ.get("PLAYWRIGHT_TIMEOUT_MS", "8000"))
+PLAYWRIGHT_VIEWPORT = (1000, 700)  # Phase 12: larger viewport for richer content
 
 # CTA overlay — "Comment 'X' for code" pill in last seconds before outro
 ENABLE_CTA_OVERLAY = os.environ.get("ENABLE_CTA_OVERLAY", "1") == "1"
-CTA_LEAD_TIME = float(os.environ.get("CTA_LEAD_TIME", "4.0"))  # seconds before outro
+CTA_LEAD_TIME = float(os.environ.get("CTA_LEAD_TIME", "999.0"))  # Phase 12: visible from start
 CTA_Y = 1560  # y-position of CTA pill
 
 
