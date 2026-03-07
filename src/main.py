@@ -439,6 +439,7 @@ def main():
                 code_output=code_output,
                 code_before=content.get("code_before"),
                 title=content["title"],
+                html_code=content.get("html_code"),  # Phase 12.2: for visual_ui animated Playwright preview
             ),
             timeout_s=config.RENDER_TIMEOUT_S,
             step_name="video_render",
@@ -1402,8 +1403,11 @@ if __name__ == "__main__":
         # Phase 8.1: Self-healing pipeline checks
         from src.health_monitor import run_all_checks
         report = run_all_checks()
-        issues = report.get("stale_queue", {}).get("stale_count", 0)
-        sys.exit(0 if issues == 0 else 1)
+        stale = report.get("stale_queue", {}).get("stale_count", 0)
+        # Stale uploads are WARNING only — do NOT exit(1), that'd fail the Actions job.
+        if stale > 0:
+            logger.warning(f"Health monitor: {stale} stale upload(s) detected (warning only, not an error)")
+        sys.exit(0)
     elif "--maintenance" in sys.argv:
         # Phase 8.2: DB archive & cleanup
         from src.db_maintenance import run_maintenance

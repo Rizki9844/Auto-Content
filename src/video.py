@@ -35,6 +35,7 @@ def create_video(
     code_before: str | None = None,
     title: str = "",
     series_part: int = 0,
+    html_code: str | None = None,  # Phase 12.2: full HTML for visual_ui Playwright preview
 ) -> str:
     """
     Render a complete video from code + audio.
@@ -72,13 +73,24 @@ def create_video(
         duration = 59.0
         audio = audio.subclipped(0, 59.0)
 
-    # ── Phase 10.1: Generate visual preview image ──────────────
+    # ── Phase 10.1 / 12.2: Generate visual preview image ──────────────────
     preview_image = None
     try:
-        from src.preview_renderer import generate_preview_image
-        preview_image = generate_preview_image(code, language, code_output)
-        if preview_image:
-            logger.info(f"Visual preview generated: {preview_image.size}")
+        from src.preview_renderer import generate_animated_preview, generate_preview_image
+        # Phase 12.2: For visual_ui mode, use html_code with Playwright animated preview
+        if html_code and html_code.strip():
+            logger.info("visual_ui mode — using animated Playwright preview from html_code")
+            frames = generate_animated_preview(html_code)
+            preview_image = frames if frames else None
+            if preview_image:
+                logger.info(f"Animated preview generated: {len(preview_image)} frames")
+            else:
+                logger.warning("Animated preview returned None, falling back to static")
+                preview_image = generate_preview_image(code, language, code_output)
+        else:
+            preview_image = generate_preview_image(code, language, code_output)
+        if preview_image and not isinstance(preview_image, list):
+            logger.info(f"Static preview generated: {preview_image.size}")
     except Exception as e:
         logger.warning(f"Preview generation failed (non-critical): {e}")
         preview_image = None

@@ -317,11 +317,17 @@ class FrameRenderer:
         self.before_tokens = list(lex(self.code_before, lexer))
 
     def _compute_char_positions(self):
-        """Pre-compute (char, x, y, color) for every printable character."""
+        """Pre-compute (char, x, y, color) for every printable character.
+
+        Characters that exceed the code panel right boundary are skipped (clipped)
+        so they never overflow the screen.
+        """
         self.char_data: list[tuple[str, int, int, str]] = []
         x = config.CODE_LEFT
         y = config.CODE_TOP
         self.total_lines = 1
+        # Right clipping boundary: leave a small margin inside the panel
+        right_clip = self.width - config.PADDING - 16
 
         for token_type, token_text in self.tokens:
             color = self._resolve_color(token_type)
@@ -332,10 +338,12 @@ class FrameRenderer:
                     self.total_lines += 1
                 elif ch == "\t":
                     for _ in range(4):
-                        self.char_data.append((" ", x, y, color))
+                        if x < right_clip:
+                            self.char_data.append((" ", x, y, color))
                         x += self.char_width
                 else:
-                    self.char_data.append((ch, x, y, color))
+                    if x < right_clip:  # only draw if within panel bounds
+                        self.char_data.append((ch, x, y, color))
                     x += self.char_width
 
         self.total_chars = len(self.char_data)
