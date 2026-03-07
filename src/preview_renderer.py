@@ -147,6 +147,23 @@ async def _capture_with_playwright(
     ]
 
     tmp_path = None
+    
+    # --- Inject default styling to prevent white screens ---
+    css_injection = (
+        "<style>"
+        "html, body { margin: 0; padding: 0; min-height: 100vh; width: 100vw; "
+        "background-color: #0d1117; color: #ffffff; overflow: hidden; "
+        "font-family: system-ui, -apple-system, sans-serif; }"
+        "</style>"
+    )
+    import re
+    if re.search(r'(?i)</head>', html_content):
+        html_content = re.sub(r'(?i)(</head>)', rf'{css_injection}\1', html_content)
+    elif re.search(r'(?i)<body', html_content):
+        html_content = re.sub(r'(?i)(<body[^>]*>)', rf'{css_injection}\1', html_content)
+    else:
+        html_content = css_injection + html_content
+
     try:
         # Write HTML to temp file
         with tempfile.NamedTemporaryFile(
@@ -180,7 +197,7 @@ async def _capture_with_playwright(
             page = await browser.new_page(
                 viewport={"width": viewport[0], "height": viewport[1]},
             )
-            await page.goto(f"file://{tmp_path}", wait_until="networkidle", timeout=timeout_ms)
+            await page.goto(f"file://{tmp_path}", wait_until="load", timeout=timeout_ms)
             # Wait a bit for CSS animations / JS to start
             await page.wait_for_timeout(800)
             screenshot_bytes = await page.screenshot(type="png")
@@ -221,6 +238,23 @@ async def _capture_animated_with_playwright(
     ]
 
     tmp_path = None
+    
+    # --- Inject default styling to prevent white screens ---
+    css_injection = (
+        "<style>"
+        "html, body { margin: 0; padding: 0; min-height: 100vh; width: 100vw; "
+        "background-color: #0d1117; color: #ffffff; overflow: hidden; "
+        "font-family: system-ui, -apple-system, sans-serif; }"
+        "</style>"
+    )
+    import re
+    if re.search(r'(?i)</head>', html_content):
+        html_content = re.sub(r'(?i)(</head>)', rf'{css_injection}\1', html_content)
+    elif re.search(r'(?i)<body', html_content):
+        html_content = re.sub(r'(?i)(<body[^>]*>)', rf'{css_injection}\1', html_content)
+    else:
+        html_content = css_injection + html_content
+
     try:
         with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
             f.write(html_content)
@@ -242,7 +276,7 @@ async def _capture_animated_with_playwright(
                     raise
 
             page = await browser.new_page(viewport={"width": viewport[0], "height": viewport[1]})
-            await page.goto(f"file://{tmp_path}", wait_until="networkidle", timeout=timeout_ms)
+            await page.goto(f"file://{tmp_path}", wait_until="load", timeout=timeout_ms)
             
             # Inject a fake CSS/SVG cursor on top of interactive elements (if any) to simulate real interaction
             await page.evaluate("""
