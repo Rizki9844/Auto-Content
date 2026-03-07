@@ -50,7 +50,10 @@ def check_stale_queue(stale_hours: int = 24) -> dict:
 
         for doc in stale_docs:
             title = doc.get("title", "Unknown")
-            age_hours = (datetime.now(timezone.utc) - doc["created_at"]).total_seconds() / 3600
+            created_at = doc["created_at"]
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            age_hours = (datetime.now(timezone.utc) - created_at).total_seconds() / 3600
 
             # Send Telegram alert
             try:
