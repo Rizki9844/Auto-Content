@@ -891,6 +891,10 @@ def _validate_visual_ui_content(data: dict) -> None:
             snippet = '\n'.join(html.strip().splitlines()[:10])
         data["display_code"] = snippet
         logger.info("display_code was missing — auto-extracted from html_code")
+        
+    # CRITICAL FIX (Phase 12.2): map display_code to 'code' because the pipeline (main.py, renderer)
+    # strictly looks for content["code"] to put in the editor panel.
+    data["code"] = data["display_code"]
 
     if "hashtags" not in data or not isinstance(data.get("hashtags"), list) or len(data.get("hashtags", [])) < 1:
         data["hashtags"] = ["#WebDev", "#CSS", "#Frontend", "#JavaScript", "#Coding"]
